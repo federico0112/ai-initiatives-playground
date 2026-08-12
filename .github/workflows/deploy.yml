@@ -77,7 +77,11 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
+          # Option 1: Service Account Key (set GCP_SA_KEY secret)
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+          # Option 2: Workload Identity Federation (more secure, uncomment below and comment out credentials_json)
+          # workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          # service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
