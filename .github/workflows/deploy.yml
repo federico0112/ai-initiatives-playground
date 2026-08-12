@@ -1,0 +1,100 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'prototypes/**'
+  workflow_dispatch:
+    inputs:
+      prototype:
+        description: 'Prototype to deploy (e.g., hello-world)'
+        required: true
+        default: 'hello-world'
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  GAR_LOCATION: us-central1-docker.pkg.dev
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      prototypes: ${{ steps.changes.outputs.prototypes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed prototypes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "prototypes=[\"${{ github.event.inputs.prototype }}\"]" >> $GITHUB_OUTPUT
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '^prototypes/' | cut -d'/' -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "prototypes=$CHANGED" >> $GITHUB_OUTPUT
+          fi
+
+  test:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.prototypes != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        prototype: ${{ fromJson(needs.detect-changes.outputs.prototypes) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd prototypes/${{ matrix.prototype }}
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          cd prototypes/${{ matrix.prototype }}
+          pytest tests/ -v
+
+  deploy:
+    needs: [detect-changes, test]
+    if: needs.detect-changes.outputs.prototypes != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        prototype: ${{ fromJson(needs.detect-changes.outputs.prototypes) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.GAR_LOCATION }}
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE="${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/ai-prototypes/${{ matrix.prototype }}:${{ github.sha }}"
+          docker build -t $IMAGE ./prototypes/${{ matrix.prototype }}
+          docker push $IMAGE
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ matrix.prototype }} \
+            --image ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/ai-prototypes/${{ matrix.prototype }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated
