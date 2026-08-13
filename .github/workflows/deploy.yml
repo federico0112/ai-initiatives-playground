@@ -120,4 +120,7 @@ jobs:
             --image ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/ai-prototypes/${{ matrix.prototype }}:${{ steps.version.outputs.full_tag }} \
             --region ${{ env.REGION }} \
             --platform managed \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --port=8080 \
+            --http-startup-probe-path=/health \
+            --http-liveness-probe-path=/health
