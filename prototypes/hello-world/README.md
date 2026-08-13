@@ -20,6 +20,16 @@ hello-world/
 |----------|-------------|
 | `/` | HTML page displaying "Hello World" |
 | `/health` | Health check endpoint returning JSON |
+| `/version` | Version info (version + git SHA) |
+
+## Versioning
+
+Edit `version.py` to bump the version:
+```python
+__version__ = "0.1.0"  # Change this for new releases
+```
+
+The git SHA is automatically injected during Docker build.
 
 ## Run Locally
 

@@ -89,16 +89,35 @@ jobs:
       - name: Configure Docker
         run: gcloud auth configure-docker ${{ env.GAR_LOCATION }}
 
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(grep -oP '__version__ = "\K[^"]+' ./prototypes/${{ matrix.prototype }}/version.py)
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "full_tag=${VERSION}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+
       - name: Build and push Docker image
         run: |
-          IMAGE="${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/ai-prototypes/${{ matrix.prototype }}:${{ github.sha }}"
-          docker build -t $IMAGE ./prototypes/${{ matrix.prototype }}
-          docker push $IMAGE
+          IMAGE_BASE="${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/ai-prototypes/${{ matrix.prototype }}"
+          FULL_TAG="${{ steps.version.outputs.full_tag }}"
+
+          docker build \
+            --build-arg GIT_SHA=${{ github.sha }} \
+            -t ${IMAGE_BASE}:${FULL_TAG} \
+            -t ${IMAGE_BASE}:${{ steps.version.outputs.version }} \
+            -t ${IMAGE_BASE}:latest \
+            ./prototypes/${{ matrix.prototype }}
+
+          docker push ${IMAGE_BASE}:${FULL_TAG}
+          docker push ${IMAGE_BASE}:${{ steps.version.outputs.version }}
+          docker push ${IMAGE_BASE}:latest
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ matrix.prototype }} \
-            --image ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/ai-prototypes/${{ matrix.prototype }}:${{ github.sha }} \
+            --image ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/ai-prototypes/${{ matrix.prototype }}:${{ steps.version.outputs.full_tag }} \
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated

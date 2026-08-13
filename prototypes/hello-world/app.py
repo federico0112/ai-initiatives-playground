@@ -1,5 +1,6 @@
 """Simple Hello World Flask application."""
 from flask import Flask
+from version import __version__, __git_sha__, get_version_info
 
 app = Flask(__name__)
 
@@ -25,6 +26,12 @@ def hello():
 def health():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+@app.route("/version")
+def version():
+    """Return version information."""
+    return get_version_info()
 
 
 if __name__ == "__main__":

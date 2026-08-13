@@ -1,6 +1,7 @@
 """Tests for the Hello World application."""
 import pytest
 from app import app
+from version import __version__, get_version_info
 
 
 @pytest.fixture
@@ -34,3 +35,26 @@ def test_health_endpoint(client):
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json == {"status": "healthy"}
+
+
+def test_version_endpoint(client):
+    """Test the version endpoint."""
+    response = client.get("/version")
+    assert response.status_code == 200
+    assert "version" in response.json
+    assert "git_sha" in response.json
+
+
+def test_version_format():
+    """Test version string format."""
+    assert __version__ is not None
+    parts = __version__.split(".")
+    assert len(parts) == 3  # semantic versioning
+
+
+def test_get_version_info():
+    """Test get_version_info returns correct structure."""
+    info = get_version_info()
+    assert "version" in info
+    assert "git_sha" in info
+    assert info["version"] == __version__

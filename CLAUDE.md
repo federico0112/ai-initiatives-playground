@@ -42,11 +42,24 @@ docker run -p 8080:8080 <name>
 
 ## Conventions
 
-- Each prototype must have: `app.py`, `requirements.txt`, `Dockerfile`, `README.md`, and `tests/` folder
+- Each prototype must have: `app.py`, `version.py`, `requirements.txt`, `Dockerfile`, `README.md`, and `tests/` folder
 - Flask apps run on port 8080
-- All prototypes must include a `/health` endpoint
+- All prototypes must include `/health` and `/version` endpoints
 - Tests must pass before deployment to Cloud Run
 - Use Python 3.11
+
+## Versioning
+
+Each prototype has a `version.py` with:
+- `__version__`: Manual semantic version (e.g., "0.1.0")
+- `__git_sha__`: Git commit SHA (injected at Docker build time)
+
+Docker images are tagged as:
+- `<version>-<short-sha>` (e.g., `0.1.0-abc1234`) - used for deployment
+- `<version>` (e.g., `0.1.0`)
+- `latest`
+
+To bump version, edit `__version__` in `version.py`.
 
 ## Deployment
 
