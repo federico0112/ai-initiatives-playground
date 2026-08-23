@@ -1,225 +1,165 @@
-# AI Initiatives Playground
+# CLAUDE.md
 
-## Project Structure
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-```
-ai-initiatives-playground/
-├── prototypes/           # All prototype applications
-│   └── <prototype>/      # Each prototype is self-contained
-│       ├── app.py        # Main application (Flask)
-│       ├── requirements.txt
-│       ├── Dockerfile
-│       ├── README.md
-│       └── tests/
-│           └── test_app.py
-├── .github/workflows/
-│   ├── deploy.yml        # Cloud Run deployment (requires tests to pass)
-│   └── test.yml          # Runs pytest on PR/push
-└── README.md
-```
+## Project Overview
+
+Monorepo for AI initiative prototypes. Each prototype is a self-contained Flask application deployed to GCP Cloud Run.
 
 ## Commands
 
-### Run a prototype locally
 ```bash
+# Run a prototype locally
 cd prototypes/<name>
 pip install -r requirements.txt
 python app.py
-```
 
-### Run tests
-```bash
+# Run tests
 cd prototypes/<name>
 pytest tests/ -v
-```
 
-### Build Docker image
-```bash
+# Run a single test
+cd prototypes/<name>
+pytest tests/test_app.py::test_health_endpoint -v
+
+# Build and run Docker image
 cd prototypes/<name>
 docker build -t <name> .
 docker run -p 8080:8080 <name>
+
+# Manual deploy (usually automatic via CI)
+# Trigger via GitHub Actions workflow_dispatch
+```
+
+## Environment Variables
+
+Some prototypes require environment variables. Check each prototype's README.md for specifics.
+
+Example for doc-embedder:
+```bash
+export MONGODB_URI="mongodb+srv://..."
+export GEMINI_API_KEY="..."
+export LOG_LEVEL="DEBUG"  # optional
+```
+
+## Architecture
+
+```
+prototypes/
+└── <prototype>/
+    ├── app.py           # Flask app with /, /health, /version endpoints
+    ├── version.py       # __version__ and __git_sha__ (SHA injected at build)
+    ├── requirements.txt
+    ├── Dockerfile
+    ├── cloud-run.yaml   # Secrets and env vars for Cloud Run deployment
+    ├── README.md
+    └── tests/
+        └── test_app.py
 ```
 
 ## Conventions
 
-- Each prototype must have: `app.py`, `version.py`, `requirements.txt`, `Dockerfile`, `README.md`, and `tests/` folder
-- Flask apps run on port 8080
-- All prototypes must include `/health` and `/version` endpoints
-- Tests must pass before deployment to Cloud Run
-- Use Python 3.11
+- Python 3.11, Flask apps on port 8080
+- Every prototype requires: `app.py`, `version.py`, `requirements.txt`, `Dockerfile`, `cloud-run.yaml`, `README.md`, `tests/`
+- Required endpoints: `/health` (returns `{"status": "healthy"}`), `/version` (returns version info)
+- Tests must pass before Cloud Run deployment
+- Secrets go in GCP Secret Manager, referenced via `cloud-run.yaml`
 
 ## Versioning
 
-Each prototype has a `version.py` with:
-- `__version__`: Manual semantic version (e.g., "0.1.0")
-- `__git_sha__`: Git commit SHA (injected at Docker build time)
-
-Docker images are tagged as:
-- `<version>-<short-sha>` (e.g., `0.1.0-abc1234`) - used for deployment
-- `<version>` (e.g., `0.1.0`)
-- `latest`
-
-To bump version, edit `__version__` in `version.py`.
-
-## Deployment
-
-- Automatic deployment to GCP Cloud Run on push to `main`
-- Artifact Registry: `us-central1-docker.pkg.dev/<project>/ai-prototypes/`
-- Region: `us-central1`
+- `version.py` contains `__version__` (semantic, e.g., "0.1.0") and `__git_sha__` (injected at Docker build)
+- Docker tags: `<version>-<short-sha>` (deployment), `<version>`, `latest`
+- To bump version: edit `__version__` in `version.py`
 
 ## Adding a New Prototype
 
-### Step 1: Create the folder structure
-```bash
-mkdir -p prototypes/<name>/tests
-touch prototypes/<name>/tests/__init__.py
-```
+1. Create folder: `mkdir -p prototypes/<name>/tests && touch prototypes/<name>/tests/__init__.py`
+2. Copy structure from `prototypes/hello-world/` as template
+3. Create `cloud-run.yaml` with required secrets/env vars
+4. Create secrets in GCP Secret Manager (naming: `<prototype>-<secret-name>`)
+5. Update `.github/workflows/test.yml` matrix to include new prototype
+6. Add entry to root `README.md` prototypes table
+7. Verify locally: `pytest tests/ -v && python app.py`
 
-### Step 2: Create version.py
+## Testing Patterns
+
+Tests use pytest with Flask's test client:
+
 ```python
-"""Version information for the <name> prototype."""
-
-__version__ = "0.1.0"
-__git_sha__ = "development"
-
-def get_version_info() -> dict:
-    return {"version": __version__, "git_sha": __git_sha__}
-```
-
-### Step 3: Create app.py
-```python
-"""<Name> prototype application."""
-from flask import Flask
-from version import __version__, __git_sha__, get_version_info
-
-app = Flask(__name__)
-
-@app.route("/")
-def index():
-    return """
-    <!DOCTYPE html>
-    <html>
-    <head><title><Name></title></head>
-    <body><h1><Name> Prototype</h1></body>
-    </html>
-    """
-
-@app.route("/health")
-def health():
-    return {"status": "healthy"}
-
-@app.route("/version")
-def version():
-    return get_version_info()
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
-```
-
-### Step 4: Create requirements.txt
-```
-flask==3.0.0
-gunicorn==21.2.0
-pytest==7.4.3
-```
-
-### Step 5: Create Dockerfile
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-ARG GIT_SHA=development
-ENV GIT_SHA=${GIT_SHA}
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-RUN sed -i "s/__git_sha__ = \"development\"/__git_sha__ = \"${GIT_SHA}\"/" version.py
-
-EXPOSE 8080
-
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
-```
-
-### Step 6: Create tests/test_app.py
-```python
-"""Tests for <name> prototype."""
-import pytest
-from app import app
-from version import __version__, get_version_info
-
 @pytest.fixture
 def client():
     app.config["TESTING"] = True
     with app.test_client() as client:
         yield client
 
-def test_index_returns_200(client):
-    response = client.get("/")
-    assert response.status_code == 200
-
-def test_health_endpoint(client):
+def test_health(client):
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json == {"status": "healthy"}
-
-def test_version_endpoint(client):
-    response = client.get("/version")
-    assert response.status_code == 200
-    assert "version" in response.json
-    assert "git_sha" in response.json
 ```
 
-### Step 7: Create README.md
-```markdown
-# <Name>
+## Extensibility Patterns
 
-Brief description of the prototype.
+For pluggable components (see doc-embedder), use registry pattern:
 
-## Endpoints
+```python
+# embedders/base.py
+EMBEDDERS: dict[str, type] = {}
 
-| Endpoint | Description |
-|----------|-------------|
-| `/` | Main page |
-| `/health` | Health check |
-| `/version` | Version info |
+def register_embedder(name: str):
+    def decorator(cls):
+        EMBEDDERS[name] = cls
+        return cls
+    return decorator
 
-## Run Locally
+def get_embedder(name: str) -> BaseEmbedder:
+    return EMBEDDERS[name]()
 
-\`\`\`bash
-pip install -r requirements.txt
-python app.py
-\`\`\`
+# embedders/gemini.py
+@register_embedder("gemini")
+class GeminiEmbedder(BaseEmbedder):
+    ...
 
-## Run Tests
-
-\`\`\`bash
-pytest tests/ -v
-\`\`\`
+# app.py - import to register
+from embedders import gemini  # noqa: F401
 ```
 
-### Step 8: Update test workflow
-Edit `.github/workflows/test.yml` and add the prototype to the matrix:
-```yaml
-strategy:
-  matrix:
-    prototype: [hello-world, <name>]
-```
+## Deployment
 
-### Step 9: Update root README
-Add entry to the prototypes table in `README.md`:
-```markdown
-| [<name>](prototypes/<name>) | Brief description |
-```
+- Auto-deploys to Cloud Run on push to `main` when `prototypes/**` changes
+- Region: `us-central1`
+- Artifact Registry: `us-central1-docker.pkg.dev/<project>/ai-prototypes/`
+- Required GitHub secrets: `GCP_PROJECT_ID`, `GCP_SA_KEY`
+- Prototype secrets: Stored in GCP Secret Manager, configured via `cloud-run.yaml`
 
-### Step 10: Verify locally
-```bash
-cd prototypes/<name>
-pip install -r requirements.txt
-pytest tests/ -v
-python app.py
-# Visit http://localhost:8080
-```
+---
+
+## Behavioral Guidelines
+
+### 1. Think Before Coding
+- State assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+### 2. Simplicity First
+Minimum code that solves the problem. Nothing speculative.
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+### 3. Surgical Changes
+Touch only what you must. Clean up only your own mess.
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+- Remove imports/variables/functions that YOUR changes made unused.
+- Every changed line should trace directly to the user's request.
+
+### 4. Goal-Driven Execution
+Define success criteria. Loop until verified.
+- Transform tasks into verifiable goals with tests
+- For multi-step tasks, state a brief plan with verification steps
+- Strong success criteria let you loop independently; weak criteria require clarification

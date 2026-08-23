@@ -1,0 +1,5 @@
+# Cloud Run deployment configuration
+# This prototype has no secrets or special environment variables
+
+secrets: []
+env: []

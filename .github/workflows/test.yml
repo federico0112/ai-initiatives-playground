@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        prototype: [hello-world]
+        prototype: [hello-world, doc-embedder]
 
     steps:
       - uses: actions/checkout@v4
