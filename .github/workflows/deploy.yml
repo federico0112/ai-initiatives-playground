@@ -158,6 +158,7 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --port=8080 \
+            --memory=2Gi \
             --startup-probe httpGet.path=/health \
             --liveness-probe httpGet.path=/health \
             ${{ steps.config.outputs.secrets_flag }} \
