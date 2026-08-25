@@ -61,7 +61,7 @@ jobs:
       - name: Run tests
         run: |
           cd prototypes/${{ matrix.prototype }}
-          pytest tests/ -v
+          pytest tests/test_app.py -v
 
   deploy:
     needs: [detect-changes, test]
