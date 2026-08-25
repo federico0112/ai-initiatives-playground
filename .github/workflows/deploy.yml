@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - prototypes/rag-agent  # Temporary: remove after testing
     paths:
       - 'prototypes/**'
   workflow_dispatch:
@@ -157,7 +158,7 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --port=8080 \
-            --http-startup-probe-path=/health \
-            --http-liveness-probe-path=/health \
+            --startup-probe httpGet.path=/health \
+            --liveness-probe httpGet.path=/health \
             ${{ steps.config.outputs.secrets_flag }} \
             ${{ steps.config.outputs.env_flag }}
