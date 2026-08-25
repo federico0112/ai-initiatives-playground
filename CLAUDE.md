@@ -35,7 +35,7 @@ docker run -p 8080:8080 <name>
 
 Some prototypes require environment variables. Check each prototype's README.md for specifics.
 
-Example for doc-embedder:
+Example for rag-agent:
 ```bash
 export MONGODB_URI="mongodb+srv://..."
 export GEMINI_API_KEY="..."
@@ -99,7 +99,7 @@ def test_health(client):
 
 ## Extensibility Patterns
 
-For pluggable components (see doc-embedder), use registry pattern:
+For pluggable components (see rag-agent), use registry pattern:
 
 ```python
 # embedders/base.py

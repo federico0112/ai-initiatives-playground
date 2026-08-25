@@ -7,7 +7,7 @@ Monorepo for AI initiative prototypes.
 | Prototype | Description |
 |-----------|-------------|
 | [hello-world](prototypes/hello-world) | Sample Flask app template |
-| [doc-embedder](prototypes/doc-embedder) | Document embedding service with MongoDB Atlas vector storage |
+| [rag-agent](prototypes/rag-agent) | RAG agent with document embedding and chat using MongoDB Atlas vector storage |
 
 ## Deployment
 
@@ -24,19 +24,19 @@ Prototypes are automatically deployed to GCP Cloud Run when changes are pushed t
 
 Prototype-specific secrets are stored in GCP Secret Manager and automatically injected into Cloud Run services during deployment.
 
-**Naming convention:** `<prototype>-<secret-name>` (e.g., `doc-embedder-mongodb-uri`)
+**Naming convention:** `<prototype>-<secret-name>` (e.g., `rag-agent-mongodb-uri`)
 
 **Setup secrets:**
 
 ```bash
 # Create a secret
-gcloud secrets create doc-embedder-mongodb-uri --replication-policy="automatic"
+gcloud secrets create rag-agent-mongodb-uri --replication-policy="automatic"
 
 # Add a version with the secret value
-echo -n "mongodb+srv://..." | gcloud secrets versions add doc-embedder-mongodb-uri --data-file=-
+echo -n "mongodb+srv://..." | gcloud secrets versions add rag-agent-mongodb-uri --data-file=-
 
 # Grant Cloud Run service account access
-gcloud secrets add-iam-policy-binding doc-embedder-mongodb-uri \
+gcloud secrets add-iam-policy-binding rag-agent-mongodb-uri \
   --member="serviceAccount:PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 ```
@@ -46,7 +46,7 @@ gcloud secrets add-iam-policy-binding doc-embedder-mongodb-uri \
 ```yaml
 secrets:
   - env: MONGODB_URI           # Environment variable name
-    secret: doc-embedder-mongodb-uri  # Secret Manager secret name
+    secret: rag-agent-mongodb-uri  # Secret Manager secret name
     required: true
 
 env:
