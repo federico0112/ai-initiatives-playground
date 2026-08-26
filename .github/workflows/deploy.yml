@@ -160,6 +160,8 @@ jobs:
             --port=8080 \
             --memory=2Gi \
             --cpu=1 \
+            --max-request-body-size=150Mi \
+            --timeout=900 \
             --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=5,periodSeconds=10,failureThreshold=12,timeoutSeconds=10 \
             --liveness-probe=httpGet.path=/health,httpGet.port=8080,periodSeconds=30 \
             ${{ steps.config.outputs.secrets_flag }} \
