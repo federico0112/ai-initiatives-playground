@@ -11,6 +11,10 @@ secrets:
     secret: rag-agent-gemini-api-key
     required: true
 
+  - env: HF_TOKEN
+    secret: rag-agent-hf-token
+    required: true
+
 env:
   # Optional environment variables with defaults (not secrets)
   - name: LOG_LEVEL
