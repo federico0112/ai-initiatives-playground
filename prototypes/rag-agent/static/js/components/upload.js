@@ -15,6 +15,7 @@ export function initUpload() {
     const resultDiv = document.getElementById('uploadResult');
     const resultJson = document.getElementById('uploadResultJson');
     const errorDiv = document.getElementById('uploadError');
+    const statusDiv = document.getElementById('uploadStatus');
 
     // Load available models
     loadModels(embedderSelect);
@@ -32,21 +33,40 @@ export function initUpload() {
         // Clear previous results
         hideElement(resultDiv);
         hideElement(errorDiv);
+        hideStatus(statusDiv);
 
         // Show loading state
         setLoading(submitBtn, true);
 
         try {
             const model = embedderSelect.value;
-            const result = await API.upload(file, model);
+
+            // Step 1: Get signed URL
+            updateStatus(statusDiv, 'Getting upload URL...');
+            const { signed_url, gcs_path } = await API.getSignedUploadUrl(
+                file.name,
+                file.type || 'application/octet-stream'
+            );
+
+            // Step 2: Upload to GCS with progress
+            updateStatus(statusDiv, 'Uploading to cloud storage... 0%');
+            await API.uploadToGCS(signed_url, file, (progress) => {
+                updateStatus(statusDiv, `Uploading to cloud storage... ${progress}%`);
+            });
+
+            // Step 3: Trigger embedding
+            updateStatus(statusDiv, 'Processing document...');
+            const result = await API.embedFromGCS(gcs_path, model);
 
             // Show result
+            hideStatus(statusDiv);
             resultJson.textContent = JSON.stringify(result, null, 2);
             showElement(resultDiv);
 
             // Reset form
             form.reset();
         } catch (error) {
+            hideStatus(statusDiv);
             showError(errorDiv, error.message);
         } finally {
             setLoading(submitBtn, false);
@@ -101,6 +121,22 @@ function setLoading(button, loading) {
         button.classList.remove('loading');
         button.disabled = false;
     }
+}
+
+/**
+ * Update status message
+ */
+function updateStatus(element, message) {
+    element.textContent = message;
+    showElement(element);
+}
+
+/**
+ * Hide status message
+ */
+function hideStatus(element) {
+    hideElement(element);
+    element.textContent = '';
 }
 
 export default { initUpload };

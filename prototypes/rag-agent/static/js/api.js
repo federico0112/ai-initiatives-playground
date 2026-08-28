@@ -70,6 +70,67 @@ export const API = {
     },
 
     /**
+     * Get a signed URL for direct upload to GCS
+     * @param {string} filename - The file name
+     * @param {string} contentType - The file MIME type
+     * @returns {Promise<{signed_url: string, gcs_path: string, expires_in_minutes: number}>}
+     */
+    async getSignedUploadUrl(filename, contentType = 'application/octet-stream') {
+        return fetchJSON(`${API_BASE}/upload/signed-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename, content_type: contentType }),
+        });
+    },
+
+    /**
+     * Upload file directly to GCS using signed URL
+     * @param {string} signedUrl - The signed URL from getSignedUploadUrl
+     * @param {File} file - The file to upload
+     * @param {function} onProgress - Optional progress callback (0-100)
+     */
+    async uploadToGCS(signedUrl, file, onProgress = null) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+
+            if (onProgress) {
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        onProgress(Math.round((e.loaded / e.total) * 100));
+                    }
+                });
+            }
+
+            xhr.addEventListener('load', () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    resolve();
+                } else {
+                    reject(new Error(`Upload failed: ${xhr.status}`));
+                }
+            });
+
+            xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+            xhr.open('PUT', signedUrl);
+            xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+            xhr.send(file);
+        });
+    },
+
+    /**
+     * Trigger embedding of a file already uploaded to GCS
+     * @param {string} gcsPath - The GCS path from getSignedUploadUrl
+     * @param {string} model - The embedding model to use
+     * @returns {Promise<{document_id: string, chunks_stored: number}>}
+     */
+    async embedFromGCS(gcsPath, model = 'gemini') {
+        return fetchJSON(`${API_BASE}/embed-from-gcs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gcs_path: gcsPath, model, cleanup: true }),
+        });
+    },
+
+    /**
      * Search for similar documents
      * @param {string} query - The search query
      * @param {number} limit - Maximum results to return

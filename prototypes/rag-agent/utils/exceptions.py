@@ -28,6 +28,12 @@ class ErrorCode(str, Enum):
     STORAGE_TIMEOUT = "STORAGE_TIMEOUT"
     STORAGE_ERROR = "STORAGE_ERROR"
 
+    # GCS errors (various)
+    GCS_FILE_NOT_FOUND = "GCS_FILE_NOT_FOUND"
+    GCS_INVALID_PATH = "GCS_INVALID_PATH"
+    GCS_ACCESS_DENIED = "GCS_ACCESS_DENIED"
+    GCS_ERROR = "GCS_ERROR"
+
     # Internal errors (500)
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
@@ -94,5 +100,18 @@ class StorageError(RagAgentError):
         code: ErrorCode,
         details: dict | None = None,
         retryable: bool = True,
+    ):
+        super().__init__(message, code, details, retryable)
+
+
+class GCSError(RagAgentError):
+    """Google Cloud Storage error."""
+
+    def __init__(
+        self,
+        message: str,
+        code: ErrorCode,
+        details: dict | None = None,
+        retryable: bool = False,
     ):
         super().__init__(message, code, details, retryable)

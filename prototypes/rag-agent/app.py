@@ -26,7 +26,14 @@ from utils.exceptions import (
     ValidationError,
     ExternalAPIError,
     StorageError,
+    GCSError,
     ErrorCode,
+)
+from services.gcs import (
+    generate_upload_url,
+    download_file,
+    delete_file,
+    extract_filename,
 )
 from rag import (
     DEFAULT_MODEL,
@@ -64,6 +71,17 @@ class ChatRequest(BaseModel):
     session_id: str | None = None
     top_k: int = Field(default=DEFAULT_TOP_K, ge=1, le=MAX_TOP_K)
     model: str = DEFAULT_MODEL
+
+
+class SignedUrlRequest(BaseModel):
+    filename: str = Field(..., min_length=1, max_length=255)
+    content_type: str = Field(default="application/octet-stream")
+
+
+class EmbedFromGCSRequest(BaseModel):
+    gcs_path: str = Field(..., min_length=1)
+    model: str = "gemini"
+    cleanup: bool = True
 
 
 @asynccontextmanager
@@ -106,6 +124,19 @@ async def storage_error_handler(request: Request, exc: StorageError):
     """Handle storage errors (503)."""
     logger.error("Storage error: %s (code=%s)", exc.message, exc.code.value)
     return JSONResponse(status_code=503, content=exc.to_dict())
+
+
+@app.exception_handler(GCSError)
+async def gcs_error_handler(request: Request, exc: GCSError):
+    """Handle GCS errors (404 for not found, 403 for access denied, 500 otherwise)."""
+    logger.error("GCS error: %s (code=%s)", exc.message, exc.code.value)
+    if exc.code == ErrorCode.GCS_FILE_NOT_FOUND:
+        return JSONResponse(status_code=404, content=exc.to_dict())
+    if exc.code == ErrorCode.GCS_ACCESS_DENIED:
+        return JSONResponse(status_code=403, content=exc.to_dict())
+    if exc.code == ErrorCode.GCS_INVALID_PATH:
+        return JSONResponse(status_code=400, content=exc.to_dict())
+    return JSONResponse(status_code=500, content=exc.to_dict())
 
 
 @app.exception_handler(Exception)
@@ -366,6 +397,122 @@ async def upload(
     return {
         "document_id": document_id,
         "chunks_stored": chunks_stored,
+    }
+
+
+@app.post("/api/v1/upload/signed-url")
+async def get_signed_upload_url(request: SignedUrlRequest):
+    """Get a signed URL for direct upload to GCS.
+
+    Args:
+        request: SignedUrlRequest with filename and content_type
+
+    Returns:
+        JSON with signed_url, gcs_path, and expires_in_minutes
+    """
+    logger.info("Signed URL request received for: %s", request.filename)
+
+    # Validate file extension
+    from pathlib import Path
+    extension = Path(request.filename).suffix.lower()
+    if extension not in SUPPORTED_EXTENSIONS:
+        raise ValidationError(
+            message=f"Unsupported file type: {extension}",
+            code=ErrorCode.VALIDATION_UNSUPPORTED_FILE,
+            details={"supported_extensions": list(SUPPORTED_EXTENSIONS)},
+        )
+
+    result = generate_upload_url(request.filename, request.content_type)
+    logger.info("Signed URL generated: %s", result["gcs_path"])
+
+    return result
+
+
+@app.post("/api/v1/embed-from-gcs")
+async def embed_from_gcs(request: EmbedFromGCSRequest):
+    """Embed a document that was uploaded to GCS.
+
+    Args:
+        request: EmbedFromGCSRequest with gcs_path, model, and cleanup flag
+
+    Returns:
+        JSON with document_id, chunks_stored, and source
+    """
+    logger.info("Embed from GCS request: %s", request.gcs_path)
+
+    # Validate model
+    if request.model not in EMBEDDERS:
+        available = ", ".join(EMBEDDERS.keys())
+        raise ValidationError(
+            message=f"Unknown model: {request.model}. Available: {available}",
+            code=ErrorCode.VALIDATION_INVALID_MODEL,
+            details={"available_models": list(EMBEDDERS.keys())},
+        )
+
+    # Download file from GCS
+    file_content = download_file(request.gcs_path)
+    filename = extract_filename(request.gcs_path)
+
+    logger.info("Downloaded from GCS: %s (%d bytes)", filename, len(file_content))
+
+    # Process file into chunks (reuse existing logic)
+    try:
+        documents = process_file(file_content, filename)
+    except ValueError as e:
+        if "Unsupported file type" in str(e):
+            raise ValidationError(
+                message=str(e),
+                code=ErrorCode.VALIDATION_UNSUPPORTED_FILE,
+                details={"supported_extensions": list(SUPPORTED_EXTENSIONS)},
+            ) from e
+        raise
+
+    if not documents:
+        raise ValidationError(
+            message="No content extracted from file",
+            code=ErrorCode.VALIDATION_EMPTY_CONTENT,
+        )
+
+    # Extract text and metadata
+    chunks = [doc.content for doc in documents]
+    chunk_metadata = [doc.metadata for doc in documents]
+    logger.info("File processed into %d chunks", len(chunks))
+
+    # Generate embeddings
+    embedder = get_embedder(request.model)
+    embeddings = embedder.embed_batched(chunks)
+    logger.info(
+        "Embeddings generated: %d vectors of dimension %d",
+        len(embeddings),
+        len(embeddings[0]) if embeddings else 0,
+    )
+
+    # Store in storage backend
+    document_id = str(uuid.uuid4())
+    storage = get_storage()
+    chunks_stored = storage.store_embeddings(
+        document_id=document_id,
+        filename=filename,
+        chunks=chunks,
+        embeddings=embeddings,
+        model=request.model,
+        chunk_metadata=chunk_metadata,
+    )
+
+    logger.info(
+        "Embed from GCS complete: document_id=%s, chunks_stored=%d",
+        document_id,
+        chunks_stored,
+    )
+
+    # Cleanup GCS file if requested
+    if request.cleanup:
+        delete_file(request.gcs_path)
+
+    return {
+        "document_id": document_id,
+        "chunks_stored": chunks_stored,
+        "source": "gcs",
     }
 
 

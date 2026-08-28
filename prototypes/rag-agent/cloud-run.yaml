@@ -25,3 +25,6 @@ env:
 
   - name: STORAGE_BACKEND
     value: mongodb
+
+  - name: GCS_BUCKET
+    value: rag-agent-uploads-bucket
