@@ -5,9 +5,15 @@ WORKDIR /app
 ARG GIT_SHA=development
 ENV GIT_SHA=${GIT_SHA}
 
-# Install system dependencies for document processing
+# Install system dependencies for document processing (Docling/pypdfium2)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
+    libxcb1 \
+    libx11-6 \
+    libxext6 \
+    libxrender1 \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
