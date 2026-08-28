@@ -42,3 +42,8 @@ env:
 
   - name: GCS_BUCKET
     value: rag-agent-uploads-bucket
+
+# Resource limits for large PDF processing
+resources:
+  memory: 4Gi
+  cpu: "2"

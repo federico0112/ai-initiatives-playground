@@ -428,44 +428,16 @@ async def get_signed_upload_url(request: SignedUrlRequest):
     return result
 
 
-@app.post("/api/v1/embed-from-gcs")
-async def embed_from_gcs(request: EmbedFromGCSRequest):
-    """Embed a document that was uploaded to GCS.
-
-    Args:
-        request: EmbedFromGCSRequest with gcs_path, model, and cleanup flag
-
-    Returns:
-        JSON with document_id, chunks_stored, and source
-    """
-    logger.info("Embed from GCS request: %s", request.gcs_path)
-
-    # Validate model
-    if request.model not in EMBEDDERS:
-        available = ", ".join(EMBEDDERS.keys())
-        raise ValidationError(
-            message=f"Unknown model: {request.model}. Available: {available}",
-            code=ErrorCode.VALIDATION_INVALID_MODEL,
-            details={"available_models": list(EMBEDDERS.keys())},
-        )
-
+def _process_gcs_file(gcs_path: str, model: str, cleanup: bool) -> dict:
+    """Synchronous helper for processing GCS files (runs in thread pool)."""
     # Download file from GCS
-    file_content = download_file(request.gcs_path)
-    filename = extract_filename(request.gcs_path)
+    file_content = download_file(gcs_path)
+    filename = extract_filename(gcs_path)
 
     logger.info("Downloaded from GCS: %s (%d bytes)", filename, len(file_content))
 
-    # Process file into chunks (reuse existing logic)
-    try:
-        documents = process_file(file_content, filename)
-    except ValueError as e:
-        if "Unsupported file type" in str(e):
-            raise ValidationError(
-                message=str(e),
-                code=ErrorCode.VALIDATION_UNSUPPORTED_FILE,
-                details={"supported_extensions": list(SUPPORTED_EXTENSIONS)},
-            ) from e
-        raise
+    # Process file into chunks
+    documents = process_file(file_content, filename)
 
     if not documents:
         raise ValidationError(
@@ -479,7 +451,7 @@ async def embed_from_gcs(request: EmbedFromGCSRequest):
     logger.info("File processed into %d chunks", len(chunks))
 
     # Generate embeddings
-    embedder = get_embedder(request.model)
+    embedder = get_embedder(model)
     embeddings = embedder.embed_batched(chunks)
     logger.info(
         "Embeddings generated: %d vectors of dimension %d",
@@ -495,7 +467,7 @@ async def embed_from_gcs(request: EmbedFromGCSRequest):
         filename=filename,
         chunks=chunks,
         embeddings=embeddings,
-        model=request.model,
+        model=model,
         chunk_metadata=chunk_metadata,
     )
 
@@ -506,14 +478,56 @@ async def embed_from_gcs(request: EmbedFromGCSRequest):
     )
 
     # Cleanup GCS file if requested
-    if request.cleanup:
-        delete_file(request.gcs_path)
+    if cleanup:
+        delete_file(gcs_path)
 
     return {
         "document_id": document_id,
         "chunks_stored": chunks_stored,
         "source": "gcs",
     }
+
+
+@app.post("/api/v1/embed-from-gcs")
+async def embed_from_gcs(request: EmbedFromGCSRequest):
+    """Embed a document that was uploaded to GCS.
+
+    Args:
+        request: EmbedFromGCSRequest with gcs_path, model, and cleanup flag
+
+    Returns:
+        JSON with document_id, chunks_stored, and source
+    """
+    import asyncio
+
+    logger.info("Embed from GCS request: %s", request.gcs_path)
+
+    # Validate model
+    if request.model not in EMBEDDERS:
+        available = ", ".join(EMBEDDERS.keys())
+        raise ValidationError(
+            message=f"Unknown model: {request.model}. Available: {available}",
+            code=ErrorCode.VALIDATION_INVALID_MODEL,
+            details={"available_models": list(EMBEDDERS.keys())},
+        )
+
+    # Run blocking operations in thread pool to keep event loop responsive
+    try:
+        result = await asyncio.to_thread(
+            _process_gcs_file,
+            request.gcs_path,
+            request.model,
+            request.cleanup,
+        )
+        return result
+    except ValueError as e:
+        if "Unsupported file type" in str(e):
+            raise ValidationError(
+                message=str(e),
+                code=ErrorCode.VALIDATION_UNSUPPORTED_FILE,
+                details={"supported_extensions": list(SUPPORTED_EXTENSIONS)},
+            ) from e
+        raise
 
 
 @app.post("/api/v1/search")
