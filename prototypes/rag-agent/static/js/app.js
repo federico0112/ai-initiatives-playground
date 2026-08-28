@@ -2,8 +2,8 @@
  * Main application entry point
  */
 
-import { API } from './api.js';
-import { initUpload } from './components/upload.js';
+import { API } from './api.js?v=2';
+import { initUpload } from './components/upload.js?v=2';
 import { initSearch } from './components/search.js';
 import { initChat } from './components/chat.js';
 

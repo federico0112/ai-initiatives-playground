@@ -7,6 +7,10 @@ from datetime import timedelta
 
 from google.cloud import storage
 from google.cloud.exceptions import NotFound, Forbidden
+from google.oauth2 import service_account
+from google.auth import default as default_credentials
+from google.auth.transport import requests
+import google.auth
 
 from utils.exceptions import GCSError, ErrorCode
 
@@ -14,17 +18,52 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 GCS_BUCKET = os.environ.get("GCS_BUCKET", "rag-agent-uploads")
+GCS_SERVICE_ACCOUNT_KEY = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
 SIGNED_URL_EXPIRY_MINUTES = 15
 
-# Cached client
+# Cached client and credentials
 _client: storage.Client | None = None
+_signing_credentials = None
+_use_iam_signing = False
+
+
+def _init_credentials():
+    """Initialize credentials for GCS operations and URL signing."""
+    global _signing_credentials, _use_iam_signing
+
+    if _signing_credentials is not None:
+        return
+
+    # Option 1: Use service account key file (local development)
+    if GCS_SERVICE_ACCOUNT_KEY and os.path.exists(GCS_SERVICE_ACCOUNT_KEY):
+        _signing_credentials = service_account.Credentials.from_service_account_file(
+            GCS_SERVICE_ACCOUNT_KEY
+        )
+        _use_iam_signing = False
+        logger.info("Using service account key file for signing: %s", GCS_SERVICE_ACCOUNT_KEY)
+        return
+
+    # Option 2: Use IAM signing (Cloud Run / GCE)
+    credentials, project = default_credentials()
+
+    # Refresh to get the service account email
+    auth_request = requests.Request()
+    credentials.refresh(auth_request)
+
+    _signing_credentials = credentials
+    _use_iam_signing = True
+    logger.info("Using IAM signing for Cloud Run environment")
 
 
 def _get_client() -> storage.Client:
     """Get or create a cached GCS client."""
     global _client
     if _client is None:
-        _client = storage.Client()
+        _init_credentials()
+        if not _use_iam_signing:
+            _client = storage.Client(credentials=_signing_credentials)
+        else:
+            _client = storage.Client()
         logger.info("GCS client initialized")
     return _client
 
@@ -55,12 +94,28 @@ def generate_upload_url(filename: str, content_type: str) -> dict:
     blob = bucket.blob(gcs_path)
 
     try:
-        signed_url = blob.generate_signed_url(
-            version="v4",
-            expiration=timedelta(minutes=SIGNED_URL_EXPIRY_MINUTES),
-            method="PUT",
-            content_type=content_type,
-        )
+        _init_credentials()
+
+        if _use_iam_signing:
+            # Cloud Run: use IAM signing with service account email
+            signing_credentials = _signing_credentials
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=timedelta(minutes=SIGNED_URL_EXPIRY_MINUTES),
+                method="PUT",
+                content_type=content_type,
+                service_account_email=signing_credentials.service_account_email,
+                access_token=signing_credentials.token,
+            )
+        else:
+            # Local: use service account key
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=timedelta(minutes=SIGNED_URL_EXPIRY_MINUTES),
+                method="PUT",
+                content_type=content_type,
+                credentials=_signing_credentials,
+            )
     except Exception as e:
         logger.error("Failed to generate signed URL: %s", str(e))
         raise GCSError(
