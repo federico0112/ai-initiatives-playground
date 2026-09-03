@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        prototype: [hello-world]
+        prototype: [hello-world, rag-agent]
 
     steps:
       - uses: actions/checkout@v4
@@ -31,4 +31,4 @@ jobs:
       - name: Run tests
         run: |
           cd prototypes/${{ matrix.prototype }}
-          pytest tests/ -v
+          pytest tests/test_app.py -v

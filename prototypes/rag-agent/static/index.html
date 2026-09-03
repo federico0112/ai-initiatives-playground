@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <title>RAG Agent</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom styles -->
+    <link href="/static/css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10 col-xl-8">
+                <header class="mb-4">
+                    <h1 class="display-5"><i class="bi bi-robot me-2"></i>RAG Agent</h1>
+                    <p class="text-muted">Upload documents, embed them, and chat with your knowledge base</p>
+                </header>
+
+                <!-- Tab Navigation -->
+                <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload" type="button" role="tab">
+                            <i class="bi bi-cloud-upload me-1"></i>Upload & Vectorize
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button" role="tab">
+                            <i class="bi bi-files me-1"></i>Documents
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="search-tab" data-bs-toggle="tab" data-bs-target="#search" type="button" role="tab">
+                            <i class="bi bi-search me-1"></i>Search
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat" type="button" role="tab">
+                            <i class="bi bi-chat-dots me-1"></i>Chat
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content" id="mainTabContent">
+                    <!-- Upload Tab -->
+                    <div class="tab-pane fade show active" id="upload" role="tabpanel">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Upload & Vectorize</h5>
+                                <p class="card-text text-muted">Upload a document to chunk, embed, and store in the vector database.</p>
+
+                                <form id="uploadForm">
+                                    <div class="mb-3">
+                                        <label for="uploadFile" class="form-label">Choose a file</label>
+                                        <input type="file" class="form-control" id="uploadFile" accept=".pdf,.txt,.docx" required>
+                                        <div class="form-text">Supported formats: PDF, TXT, DOCX</div>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="uploadEmbedder" class="form-label">Embedder</label>
+                                            <select class="form-select" id="uploadEmbedder">
+                                                <option value="gemini" selected>Gemini</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="uploadStorage" class="form-label">Storage</label>
+                                            <select class="form-select" id="uploadStorage">
+                                                <option value="mongodb" selected>MongoDB</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary" id="uploadBtn">
+                                        <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                        <i class="bi bi-upload me-1"></i>Upload
+                                    </button>
+                                </form>
+
+                                <!-- Upload status (multi-step progress) -->
+                                <div id="uploadStatus" class="upload-status d-none"></div>
+
+                                <div id="uploadResult" class="mt-4 d-none">
+                                    <h6>Response</h6>
+                                    <pre class="bg-light p-3 rounded"><code id="uploadResultJson"></code></pre>
+                                </div>
+
+                                <div id="uploadError" class="alert alert-danger mt-4 d-none"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Documents Tab -->
+                    <div class="tab-pane fade" id="documents" role="tabpanel">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="card-title mb-0">Uploaded Documents</h5>
+                                    <div class="d-flex gap-2 align-items-center">
+                                        <select class="form-select form-select-sm" id="docsModelFilter" style="width: auto;">
+                                            <option value="">All Models</option>
+                                        </select>
+                                        <button class="btn btn-outline-secondary btn-sm" id="refreshDocsBtn">
+                                            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="documentsList"></div>
+                                <div id="documentsError" class="alert alert-danger mt-3 d-none"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search Tab -->
+                    <div class="tab-pane fade" id="search" role="tabpanel">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Search</h5>
+                                <p class="card-text text-muted">Search for similar documents using vector similarity.</p>
+
+                                <form id="searchForm">
+                                    <div class="mb-3">
+                                        <label for="searchQuery" class="form-label">Query</label>
+                                        <input type="text" class="form-control" id="searchQuery" placeholder="Enter your search query..." required>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="searchEmbedder" class="form-label">Embedder</label>
+                                            <select class="form-select" id="searchEmbedder">
+                                                <option value="gemini-embedding-2" selected>gemini-embedding-2</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="searchLimit" class="form-label">Limit: <span id="searchLimitValue">5</span></label>
+                                            <input type="range" class="form-range" id="searchLimit" min="1" max="100" value="5">
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <label for="searchFiles" class="form-label mb-0">Filter by files</label>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="refreshSearchFilesBtn">
+                                                    <i class="bi bi-arrow-clockwise"></i>
+                                                </button>
+                                            </div>
+                                            <select class="form-select mt-1" id="searchFiles" multiple size="3">
+                                                <option value="" disabled>Loading files...</option>
+                                            </select>
+                                            <div class="form-text">Shows files embedded with selected model. Hold Ctrl/Cmd for multiple.</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="searchStorage" class="form-label">Storage</label>
+                                            <select class="form-select" id="searchStorage">
+                                                <option value="mongodb" selected>MongoDB</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary" id="searchBtn">
+                                        <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                        <i class="bi bi-search me-1"></i>Search
+                                    </button>
+                                </form>
+
+                                <div id="searchResult" class="mt-4 d-none">
+                                    <h6>Response</h6>
+                                    <pre class="bg-light p-3 rounded search-results"><code id="searchResultJson"></code></pre>
+                                </div>
+
+                                <div id="searchError" class="alert alert-danger mt-4 d-none"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Tab -->
+                    <div class="tab-pane fade" id="chat" role="tabpanel">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <h5 class="card-title mb-0">Chat with Documents</h5>
+                                        <small class="text-muted" id="chatSessionId">Session: loading...</small>
+                                    </div>
+                                    <button class="btn btn-outline-secondary btn-sm" id="newSessionBtn">
+                                        <i class="bi bi-plus-circle me-1"></i>New Session
+                                    </button>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label for="chatModel" class="form-label">Chat Model</label>
+                                        <select class="form-select" id="chatModel">
+                                            <option value="gemini-2.5-flash" selected>gemini-2.5-flash</option>
+                                            <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                            <option value="gemini-3.8-flash">gemini-3.8-flash</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="chatEmbedder" class="form-label">Embedder</label>
+                                        <select class="form-select" id="chatEmbedder">
+                                            <option value="gemini-embedding-2" selected>gemini-embedding-2</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="chatTopK" class="form-label">Documents: <span id="chatTopKValue">5</span></label>
+                                        <input type="range" class="form-range" id="chatTopK" min="1" max="20" value="5">
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <label for="chatFiles" class="form-label mb-0">Filter by files (optional)</label>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" id="refreshChatFilesBtn">
+                                                <i class="bi bi-arrow-clockwise"></i>
+                                            </button>
+                                        </div>
+                                        <select class="form-select mt-1" id="chatFiles" multiple size="2">
+                                            <option value="" disabled>Loading files...</option>
+                                        </select>
+                                        <div class="form-text">Leave empty to search all files with selected embedder. Hold Ctrl/Cmd for multiple.</div>
+                                    </div>
+                                </div>
+
+                                <!-- Chat Messages -->
+                                <div id="chatMessages" class="chat-container mb-3"></div>
+
+                                <!-- Chat Input -->
+                                <form id="chatForm">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="chatInput" placeholder="Ask a question about your documents..." required>
+                                        <button type="submit" class="btn btn-primary" id="chatSendBtn">
+                                            <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                            <i class="bi bi-send"></i>
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <div id="chatError" class="alert alert-danger mt-3 d-none"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <footer class="mt-4 text-center text-muted">
+                    <small>
+                        <a href="/docs" target="_blank" class="text-decoration-none">
+                            <i class="bi bi-journal-code me-1"></i>API Docs
+                        </a>
+                        <span class="mx-2">|</span>
+                        <span id="versionInfo">v0.0.0</span>
+                    </small>
+                </footer>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Application JS (modules) -->
+    <script type="module" src="/static/js/app.js?v=3"></script>
+</body>
+</html>

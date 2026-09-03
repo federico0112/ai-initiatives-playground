@@ -1,0 +1,345 @@
+[
+  {
+    "input": "What is the total amount of the invoice?",
+    "expected_output": "$22,500.00",
+    "context": [
+      "Services Vendor Inc. \n100 Elm Street Pleasantville, NY \nTO Alpha Inc. 5900 1st Street Los Angeles, CA \nDescription Front End Engineering Service $5000.00 \n Back End Engineering Service $7500.00 \n Quality Assurance Manager $10,000.00 \n Total Amount $22,500.00 \nMake all checks payable to Services Vendor Inc. Payment is due within 30 days.If you have any questions concerning this invoice, contact Bia Hermes. THANK YOU FOR YOUR BUSINESS!  INVOICE INVOICE # 0001 DATE 01/01/2022 FOR Alpha Project P.O. # 1000"
+    ]
+  },
+  {
+    "input": "What is the invoice number?",
+    "expected_output": "#0001",
+    "context": [
+      "Services Vendor Inc. \n100 Elm Street Pleasantville, NY \nTO Alpha Inc. 5900 1st Street Los Angeles, CA \nDescription Front End Engineering Service $5000.00 \n Back End Engineering Service $7500.00 \n Quality Assurance Manager $10,000.00 \n Total Amount $22,500.00 \nMake all checks payable to Services Vendor Inc. Payment is due within 30 days.If you have any questions concerning this invoice, contact Bia Hermes. THANK YOU FOR YOUR BUSINESS!  INVOICE INVOICE # 0001 DATE 01/01/2022 FOR Alpha Project P.O. # 1000"
+    ]
+  },
+  {
+    "input": "What is a list of the items being purchased??",
+    "expected_output": "\u2022Front End Engineering Service;\n\u2022Back End Engineering Service;\n\u2022Quality Assurance Manager",
+    "context": [
+      "Services Vendor Inc. \n100 Elm Street Pleasantville, NY \nTO Alpha Inc. 5900 1st Street Los Angeles, CA \nDescription Front End Engineering Service $5000.00 \n Back End Engineering Service $7500.00 \n Quality Assurance Manager $10,000.00 \n Total Amount $22,500.00 \nMake all checks payable to Services Vendor Inc. Payment is due within 30 days.If you have any questions concerning this invoice, contact Bia Hermes. THANK YOU FOR YOUR BUSINESS!  INVOICE INVOICE # 0001 DATE 01/01/2022 FOR Alpha Project P.O. # 1000"
+    ]
+  },
+  {
+    "input": "What is the address of the company receiving the invoice?",
+    "expected_output": "5900 1st Street, Los Angeles, CA",
+    "context": [
+      "Services Vendor Inc. \n100 Elm Street Pleasantville, NY \nTO Alpha Inc. 5900 1st Street Los Angeles, CA \nDescription Front End Engineering Service $5000.00 \n Back End Engineering Service $7500.00 \n Quality Assurance Manager $10,000.00 \n Total Amount $22,500.00 \nMake all checks payable to Services Vendor Inc. Payment is due within 30 days.If you have any questions concerning this invoice, contact Bia Hermes. THANK YOU FOR YOUR BUSINESS!  INVOICE INVOICE # 0001 DATE 01/01/2022 FOR Alpha Project P.O. # 1000"
+    ]
+  },
+  {
+    "input": "What is the name of the contact for question?",
+    "expected_output": "Bia Hermes",
+    "context": [
+      "Services Vendor Inc. \n100 Elm Street Pleasantville, NY \nTO Alpha Inc. 5900 1st Street Los Angeles, CA \nDescription Front End Engineering Service $5000.00 \n Back End Engineering Service $7500.00 \n Quality Assurance Manager $10,000.00 \n Total Amount $22,500.00 \nMake all checks payable to Services Vendor Inc. Payment is due within 30 days.If you have any questions concerning this invoice, contact Bia Hermes. THANK YOU FOR YOUR BUSINESS!  INVOICE INVOICE # 0001 DATE 01/01/2022 FOR Alpha Project P.O. # 1000"
+    ]
+  },
+  {
+    "input": "What is the PO number?",
+    "expected_output": "#1000",
+    "context": [
+      "Services Vendor Inc. \n100 Elm Street Pleasantville, NY \nTO Alpha Inc. 5900 1st Street Los Angeles, CA \nDescription Front End Engineering Service $5000.00 \n Back End Engineering Service $7500.00 \n Quality Assurance Manager $10,000.00 \n Total Amount $22,500.00 \nMake all checks payable to Services Vendor Inc. Payment is due within 30 days.If you have any questions concerning this invoice, contact Bia Hermes. THANK YOU FOR YOUR BUSINESS!  INVOICE INVOICE # 0001 DATE 01/01/2022 FOR Alpha Project P.O. # 1000"
+    ]
+  },
+  {
+    "input": "What is the name of the company sending the invoice?",
+    "expected_output": "Services Vendor Inc.",
+    "context": [
+      "Services Vendor Inc. \n100 Elm Street Pleasantville, NY \nTO Alpha Inc. 5900 1st Street Los Angeles, CA \nDescription Front End Engineering Service $5000.00 \n Back End Engineering Service $7500.00 \n Quality Assurance Manager $10,000.00 \n Total Amount $22,500.00 \nMake all checks payable to Services Vendor Inc. Payment is due within 30 days.If you have any questions concerning this invoice, contact Bia Hermes. THANK YOU FOR YOUR BUSINESS!  INVOICE INVOICE # 0001 DATE 01/01/2022 FOR Alpha Project P.O. # 1000"
+    ]
+  },
+  {
+    "input": "When is payment due?",
+    "expected_output": "within 30 days of 01/01/2022",
+    "context": [
+      "Services Vendor Inc. \n100 Elm Street Pleasantville, NY \nTO Alpha Inc. 5900 1st Street Los Angeles, CA \nDescription Front End Engineering Service $5000.00 \n Back End Engineering Service $7500.00 \n Quality Assurance Manager $10,000.00 \n Total Amount $22,500.00 \nMake all checks payable to Services Vendor Inc. Payment is due within 30 days.If you have any questions concerning this invoice, contact Bia Hermes. THANK YOU FOR YOUR BUSINESS!  INVOICE INVOICE # 0001 DATE 01/01/2022 FOR Alpha Project P.O. # 1000"
+    ]
+  },
+  {
+    "input": "When is payment due?",
+    "expected_output": "May 3, 2022",
+    "context": [
+      "Invoice DATE March 3, 2022\tINVOICE NO 234\tABC Company 8675 River Run Road Marlington, CT 09392 INVOICE TO Delta Inc. 8723 Wilton Boulevard Los Angeles, CA HEBE HERACLES\tLASER PRINTER\tPAYMENT TERMS DUE DATE Due on Receipt May 3, 2022 QUANTITY DESCRIPTION UNIT PRICE LINE TOTAL 30 \tBoxes of Printer Paper\t$30\t$900 10\tPrinter Cartridges\t$75 $750 5\tLaser printers\t$500.00 $2500.00 Subtotal 4150.00 Sales Tax 10% Total 4565.00"
+    ]
+  },
+  {
+    "input": "What is the subtotal amount?",
+    "expected_output": "4150.00",
+    "context": [
+      "Invoice DATE March 3, 2022\tINVOICE NO 234\tABC Company 8675 River Run Road Marlington, CT 09392 INVOICE TO Delta Inc. 8723 Wilton Boulevard Los Angeles, CA HEBE HERACLES\tLASER PRINTER\tPAYMENT TERMS DUE DATE Due on Receipt May 3, 2022 QUANTITY DESCRIPTION UNIT PRICE LINE TOTAL 30 \tBoxes of Printer Paper\t$30\t$900 10\tPrinter Cartridges\t$75 $750 5\tLaser printers\t$500.00 $2500.00 Subtotal 4150.00 Sales Tax 10% Total 4565.00"
+    ]
+  },
+  {
+    "input": "What is the total amount?",
+    "expected_output": "4565.00",
+    "context": [
+      "Invoice DATE March 3, 2022\tINVOICE NO 234\tABC Company 8675 River Run Road Marlington, CT 09392 INVOICE TO Delta Inc. 8723 Wilton Boulevard Los Angeles, CA HEBE HERACLES\tLASER PRINTER\tPAYMENT TERMS DUE DATE Due on Receipt May 3, 2022 QUANTITY DESCRIPTION UNIT PRICE LINE TOTAL 30 \tBoxes of Printer Paper\t$30\t$900 10\tPrinter Cartridges\t$75 $750 5\tLaser printers\t$500.00 $2500.00 Subtotal 4150.00 Sales Tax 10% Total 4565.00"
+    ]
+  },
+  {
+    "input": "What is a list of the purchased items?",
+    "expected_output": "\u202230 Boxes of Printer Paper;\n\u202210 Printer Cartridges;\n\u20225 Laser Printers.",
+    "context": [
+      "Invoice DATE March 3, 2022\tINVOICE NO 234\tABC Company 8675 River Run Road Marlington, CT 09392 INVOICE TO Delta Inc. 8723 Wilton Boulevard Los Angeles, CA HEBE HERACLES\tLASER PRINTER\tPAYMENT TERMS DUE DATE Due on Receipt May 3, 2022 QUANTITY DESCRIPTION UNIT PRICE LINE TOTAL 30 \tBoxes of Printer Paper\t$30\t$900 10\tPrinter Cartridges\t$75 $750 5\tLaser printers\t$500.00 $2500.00 Subtotal 4150.00 Sales Tax 10% Total 4565.00"
+    ]
+  },
+  {
+    "input": "What is the invoice number?",
+    "expected_output": "234",
+    "context": [
+      "Invoice DATE March 3, 2022\tINVOICE NO 234\tABC Company 8675 River Run Road Marlington, CT 09392 INVOICE TO Delta Inc. 8723 Wilton Boulevard Los Angeles, CA HEBE HERACLES\tLASER PRINTER\tPAYMENT TERMS DUE DATE Due on Receipt May 3, 2022 QUANTITY DESCRIPTION UNIT PRICE LINE TOTAL 30 \tBoxes of Printer Paper\t$30\t$900 10\tPrinter Cartridges\t$75 $750 5\tLaser printers\t$500.00 $2500.00 Subtotal 4150.00 Sales Tax 10% Total 4565.00"
+    ]
+  },
+  {
+    "input": "What is the purchase order number?",
+    "expected_output": "Not Found",
+    "context": [
+      "Invoice DATE March 3, 2022\tINVOICE NO 234\tABC Company 8675 River Run Road Marlington, CT 09392 INVOICE TO Delta Inc. 8723 Wilton Boulevard Los Angeles, CA HEBE HERACLES\tLASER PRINTER\tPAYMENT TERMS DUE DATE Due on Receipt May 3, 2022 QUANTITY DESCRIPTION UNIT PRICE LINE TOTAL 30 \tBoxes of Printer Paper\t$30\t$900 10\tPrinter Cartridges\t$75 $750 5\tLaser printers\t$500.00 $2500.00 Subtotal 4150.00 Sales Tax 10% Total 4565.00"
+    ]
+  },
+  {
+    "input": "What is the name of the two companies?",
+    "expected_output": "ABC Company and Delta Inc.",
+    "context": [
+      "Invoice DATE March 3, 2022\tINVOICE NO 234\tABC Company 8675 River Run Road Marlington, CT 09392 INVOICE TO Delta Inc. 8723 Wilton Boulevard Los Angeles, CA HEBE HERACLES\tLASER PRINTER\tPAYMENT TERMS DUE DATE Due on Receipt May 3, 2022 QUANTITY DESCRIPTION UNIT PRICE LINE TOTAL 30 \tBoxes of Printer Paper\t$30\t$900 10\tPrinter Cartridges\t$75 $750 5\tLaser printers\t$500.00 $2500.00 Subtotal 4150.00 Sales Tax 10% Total 4565.00"
+    ]
+  },
+  {
+    "input": "How many boxes of paper are being purchased?",
+    "expected_output": "30",
+    "context": [
+      "Invoice DATE March 3, 2022\tINVOICE NO 234\tABC Company 8675 River Run Road Marlington, CT 09392 INVOICE TO Delta Inc. 8723 Wilton Boulevard Los Angeles, CA HEBE HERACLES\tLASER PRINTER\tPAYMENT TERMS DUE DATE Due on Receipt May 3, 2022 QUANTITY DESCRIPTION UNIT PRICE LINE TOTAL 30 \tBoxes of Printer Paper\t$30\t$900 10\tPrinter Cartridges\t$75 $750 5\tLaser printers\t$500.00 $2500.00 Subtotal 4150.00 Sales Tax 10% Total 4565.00"
+    ]
+  },
+  {
+    "input": "What are the payment terms?",
+    "expected_output": "Due on Receipt",
+    "context": [
+      "Invoice DATE March 3, 2022\tINVOICE NO 234\tABC Company 8675 River Run Road Marlington, CT 09392 INVOICE TO Delta Inc. 8723 Wilton Boulevard Los Angeles, CA HEBE HERACLES\tLASER PRINTER\tPAYMENT TERMS DUE DATE Due on Receipt May 3, 2022 QUANTITY DESCRIPTION UNIT PRICE LINE TOTAL 30 \tBoxes of Printer Paper\t$30\t$900 10\tPrinter Cartridges\t$75 $750 5\tLaser printers\t$500.00 $2500.00 Subtotal 4150.00 Sales Tax 10% Total 4565.00"
+    ]
+  },
+  {
+    "input": "What is the address of ABC Company?",
+    "expected_output": "8675 River Run Road, Marlington, CT 09392",
+    "context": [
+      "Invoice DATE March 3, 2022\tINVOICE NO 234\tABC Company 8675 River Run Road Marlington, CT 09392 INVOICE TO Delta Inc. 8723 Wilton Boulevard Los Angeles, CA HEBE HERACLES\tLASER PRINTER\tPAYMENT TERMS DUE DATE Due on Receipt May 3, 2022 QUANTITY DESCRIPTION UNIT PRICE LINE TOTAL 30 \tBoxes of Printer Paper\t$30\t$900 10\tPrinter Cartridges\t$75 $750 5\tLaser printers\t$500.00 $2500.00 Subtotal 4150.00 Sales Tax 10% Total 4565.00"
+    ]
+  },
+  {
+    "input": "What is the date of the invoice?",
+    "expected_output": "March 3, 2022",
+    "context": [
+      "Invoice DATE March 3, 2022\tINVOICE NO 234\tABC Company 8675 River Run Road Marlington, CT 09392 INVOICE TO Delta Inc. 8723 Wilton Boulevard Los Angeles, CA HEBE HERACLES\tLASER PRINTER\tPAYMENT TERMS DUE DATE Due on Receipt May 3, 2022 QUANTITY DESCRIPTION UNIT PRICE LINE TOTAL 30 \tBoxes of Printer Paper\t$30\t$900 10\tPrinter Cartridges\t$75 $750 5\tLaser printers\t$500.00 $2500.00 Subtotal 4150.00 Sales Tax 10% Total 4565.00"
+    ]
+  },
+  {
+    "input": "When was Biden inaugurated?",
+    "expected_output": "January 20, 2021",
+    "context": [
+      "Joe Biden's tenure as the 46th president of the United States began with his inauguration on January 20, 2021. Biden, a Democrat from Delaware who previously served as vice president under Barack Obama, took office following his victory in the 2020 presidential election over Republican incumbent president Donald Trump. Upon his inauguration, he became the oldest president in American history."
+    ]
+  },
+  {
+    "input": "Who was Biden's opponent in the 2020 presidential election?",
+    "expected_output": "Donald Trump",
+    "context": [
+      "Joe Biden's tenure as the 46th president of the United States began with his inauguration on January 20, 2021. Biden, a Democrat from Delaware who previously served as vice president under Barack Obama, took office following his victory in the 2020 presidential election over Republican incumbent president Donald Trump. Upon his inauguration, he became the oldest president in American history."
+    ]
+  },
+  {
+    "input": "What state is Biden from?",
+    "expected_output": "Delaware",
+    "context": [
+      "Joe Biden's tenure as the 46th president of the United States began with his inauguration on January 20, 2021. Biden, a Democrat from Delaware who previously served as vice president under Barack Obama, took office following his victory in the 2020 presidential election over Republican incumbent president Donald Trump. Upon his inauguration, he became the oldest president in American history."
+    ]
+  },
+  {
+    "input": "Who was President when Biden was Vice President?",
+    "expected_output": "Barack Obama",
+    "context": [
+      "Joe Biden's tenure as the 46th president of the United States began with his inauguration on January 20, 2021. Biden, a Democrat from Delaware who previously served as vice president under Barack Obama, took office following his victory in the 2020 presidential election over Republican incumbent president Donald Trump. Upon his inauguration, he became the oldest president in American history."
+    ]
+  },
+  {
+    "input": "What is a list of the top summary points?",
+    "expected_output": "\u2022Joe Biden was inaugurated on January 20, 2021;\n\u2022Biden is the 46th President of the United States;\n\u2022Biden previously served as Vice President under Barack Obama;\n\u2022Biden won the 2020 presidential election over incumbent Donald Trump;\n\u2022Biden is the oldest president in American history.",
+    "context": [
+      "Joe Biden's tenure as the 46th president of the United States began with his inauguration on January 20, 2021. Biden, a Democrat from Delaware who previously served as vice president under Barack Obama, took office following his victory in the 2020 presidential election over Republican incumbent president Donald Trump. Upon his inauguration, he became the oldest president in American history."
+    ]
+  },
+  {
+    "input": "What is a headline summary in 10 words or less?",
+    "expected_output": "Joe Biden is the 46th President of the United States.",
+    "context": [
+      "Joe Biden's tenure as the 46th president of the United States began with his inauguration on January 20, 2021. Biden, a Democrat from Delaware who previously served as vice president under Barack Obama, took office following his victory in the 2020 presidential election over Republican incumbent president Donald Trump. Upon his inauguration, he became the oldest president in American history."
+    ]
+  },
+  {
+    "input": "When did Biden announce the COVID task force?",
+    "expected_output": "Two days after becoming the projected winner",
+    "context": [
+      "Though Biden was generally acknowledged as the winner, General Services Administration head Emily W. Murphy initially refused to begin the transition to the president-elect, thereby denying funds and office space to his team. On November 23, after Michigan certified its results, Murphy issued the letter of ascertainment, granting the Biden transition team access to federal funds and resources for an orderly transition. Two days after becoming the projected winner of the 2020 election, Biden announced the formation of a task force to advise him on the COVID-19 pandemic during the transition, co-chaired by former Surgeon General Vivek Murthy, former FDA commissioner David A. Kessler, and Yale University's Marcella Nunez-Smith. On January 5, 2021, the Democratic Party won control of the United States Senate, effective January 20, as a result of electoral victories in Georgia by Jon Ossoff in a runoff election for a six-year term and Raphael Warnock in a special runoff election for a two-year term. President-elect Biden had supported and campaigned for both candidates prior to the runoff elections on January 5.On January 6, a mob of thousands of Trump supporters violently stormed the Capitol in the hope of overturning Biden's election, forcing Congress to evacuate during the counting of the Electoral College votes. More than 26,000 National Guard members were deployed to the capital for the inauguration, with thousands remaining into the spring."
+    ]
+  },
+  {
+    "input": "What is a list of the three people that served as co-chairs of the COVID task force?",
+    "expected_output": "1. former Surgeon General Vivek Murthy;\n2. former FDA commissioner David A. Kessler;\n3. Yale University's Marcella Nunez-Smith.",
+    "context": [
+      "Though Biden was generally acknowledged as the winner, General Services Administration head Emily W. Murphy initially refused to begin the transition to the president-elect, thereby denying funds and office space to his team. On November 23, after Michigan certified its results, Murphy issued the letter of ascertainment, granting the Biden transition team access to federal funds and resources for an orderly transition. Two days after becoming the projected winner of the 2020 election, Biden announced the formation of a task force to advise him on the COVID-19 pandemic during the transition, co-chaired by former Surgeon General Vivek Murthy, former FDA commissioner David A. Kessler, and Yale University's Marcella Nunez-Smith. On January 5, 2021, the Democratic Party won control of the United States Senate, effective January 20, as a result of electoral victories in Georgia by Jon Ossoff in a runoff election for a six-year term and Raphael Warnock in a special runoff election for a two-year term. President-elect Biden had supported and campaigned for both candidates prior to the runoff elections on January 5.On January 6, a mob of thousands of Trump supporters violently stormed the Capitol in the hope of overturning Biden's election, forcing Congress to evacuate during the counting of the Electoral College votes. More than 26,000 National Guard members were deployed to the capital for the inauguration, with thousands remaining into the spring."
+    ]
+  },
+  {
+    "input": "Who are the two people that won elections in Georgia?",
+    "expected_output": "Jon Ossoff and Raphael Warnock",
+    "context": [
+      "Though Biden was generally acknowledged as the winner, General Services Administration head Emily W. Murphy initially refused to begin the transition to the president-elect, thereby denying funds and office space to his team. On November 23, after Michigan certified its results, Murphy issued the letter of ascertainment, granting the Biden transition team access to federal funds and resources for an orderly transition. Two days after becoming the projected winner of the 2020 election, Biden announced the formation of a task force to advise him on the COVID-19 pandemic during the transition, co-chaired by former Surgeon General Vivek Murthy, former FDA commissioner David A. Kessler, and Yale University's Marcella Nunez-Smith. On January 5, 2021, the Democratic Party won control of the United States Senate, effective January 20, as a result of electoral victories in Georgia by Jon Ossoff in a runoff election for a six-year term and Raphael Warnock in a special runoff election for a two-year term. President-elect Biden had supported and campaigned for both candidates prior to the runoff elections on January 5.On January 6, a mob of thousands of Trump supporters violently stormed the Capitol in the hope of overturning Biden's election, forcing Congress to evacuate during the counting of the Electoral College votes. More than 26,000 National Guard members were deployed to the capital for the inauguration, with thousands remaining into the spring."
+    ]
+  },
+  {
+    "input": "What is the length of Raphael Warnock's term?",
+    "expected_output": "Two-year term",
+    "context": [
+      "Though Biden was generally acknowledged as the winner, General Services Administration head Emily W. Murphy initially refused to begin the transition to the president-elect, thereby denying funds and office space to his team. On November 23, after Michigan certified its results, Murphy issued the letter of ascertainment, granting the Biden transition team access to federal funds and resources for an orderly transition. Two days after becoming the projected winner of the 2020 election, Biden announced the formation of a task force to advise him on the COVID-19 pandemic during the transition, co-chaired by former Surgeon General Vivek Murthy, former FDA commissioner David A. Kessler, and Yale University's Marcella Nunez-Smith. On January 5, 2021, the Democratic Party won control of the United States Senate, effective January 20, as a result of electoral victories in Georgia by Jon Ossoff in a runoff election for a six-year term and Raphael Warnock in a special runoff election for a two-year term. President-elect Biden had supported and campaigned for both candidates prior to the runoff elections on January 5.On January 6, a mob of thousands of Trump supporters violently stormed the Capitol in the hope of overturning Biden's election, forcing Congress to evacuate during the counting of the Electoral College votes. More than 26,000 National Guard members were deployed to the capital for the inauguration, with thousands remaining into the spring."
+    ]
+  },
+  {
+    "input": "How many national guard members were deployed on January 6?",
+    "expected_output": "26,000",
+    "context": [
+      "Though Biden was generally acknowledged as the winner, General Services Administration head Emily W. Murphy initially refused to begin the transition to the president-elect, thereby denying funds and office space to his team. On November 23, after Michigan certified its results, Murphy issued the letter of ascertainment, granting the Biden transition team access to federal funds and resources for an orderly transition. Two days after becoming the projected winner of the 2020 election, Biden announced the formation of a task force to advise him on the COVID-19 pandemic during the transition, co-chaired by former Surgeon General Vivek Murthy, former FDA commissioner David A. Kessler, and Yale University's Marcella Nunez-Smith. On January 5, 2021, the Democratic Party won control of the United States Senate, effective January 20, as a result of electoral victories in Georgia by Jon Ossoff in a runoff election for a six-year term and Raphael Warnock in a special runoff election for a two-year term. President-elect Biden had supported and campaigned for both candidates prior to the runoff elections on January 5.On January 6, a mob of thousands of Trump supporters violently stormed the Capitol in the hope of overturning Biden's election, forcing Congress to evacuate during the counting of the Electoral College votes. More than 26,000 National Guard members were deployed to the capital for the inauguration, with thousands remaining into the spring."
+    ]
+  },
+  {
+    "input": "What is a list of the top 5 summary points?",
+    "expected_output": "1. General Services Administration head Emily W. Murphy initially refused to begin the transition for president-elect Biden until Michigan certified its results on November 23;\n2. Two days after becoming the projected winner, Biden announced the formation of a task forceto advise on the COVID-19 pandemic;\n3. On January 5, 2021, the Democratic Party won control of the U.S. Senate, with the electoralvictories in Georgia by Jon Ossoff and Raphael Warnock;\n4. On January 6, 2021, a mob of Trump supporters stormed the Capitol, forcing Congress to evacuateduring the counting of the Electoral Votes;\n5. For the inauguration, more than 26,000 National Guard members were deployed.",
+    "context": [
+      "Though Biden was generally acknowledged as the winner, General Services Administration head Emily W. Murphy initially refused to begin the transition to the president-elect, thereby denying funds and office space to his team. On November 23, after Michigan certified its results, Murphy issued the letter of ascertainment, granting the Biden transition team access to federal funds and resources for an orderly transition. Two days after becoming the projected winner of the 2020 election, Biden announced the formation of a task force to advise him on the COVID-19 pandemic during the transition, co-chaired by former Surgeon General Vivek Murthy, former FDA commissioner David A. Kessler, and Yale University's Marcella Nunez-Smith. On January 5, 2021, the Democratic Party won control of the United States Senate, effective January 20, as a result of electoral victories in Georgia by Jon Ossoff in a runoff election for a six-year term and Raphael Warnock in a special runoff election for a two-year term. President-elect Biden had supported and campaigned for both candidates prior to the runoff elections on January 5.On January 6, a mob of thousands of Trump supporters violently stormed the Capitol in the hope of overturning Biden's election, forcing Congress to evacuate during the counting of the Electoral College votes. More than 26,000 National Guard members were deployed to the capital for the inauguration, with thousands remaining into the spring."
+    ]
+  },
+  {
+    "input": "When was the letter of ascertainment issued?",
+    "expected_output": "November 23",
+    "context": [
+      "Though Biden was generally acknowledged as the winner, General Services Administration head Emily W. Murphy initially refused to begin the transition to the president-elect, thereby denying funds and office space to his team. On November 23, after Michigan certified its results, Murphy issued the letter of ascertainment, granting the Biden transition team access to federal funds and resources for an orderly transition. Two days after becoming the projected winner of the 2020 election, Biden announced the formation of a task force to advise him on the COVID-19 pandemic during the transition, co-chaired by former Surgeon General Vivek Murthy, former FDA commissioner David A. Kessler, and Yale University's Marcella Nunez-Smith. On January 5, 2021, the Democratic Party won control of the United States Senate, effective January 20, as a result of electoral victories in Georgia by Jon Ossoff in a runoff election for a six-year term and Raphael Warnock in a special runoff election for a two-year term. President-elect Biden had supported and campaigned for both candidates prior to the runoff elections on January 5.On January 6, a mob of thousands of Trump supporters violently stormed the Capitol in the hope of overturning Biden's election, forcing Congress to evacuate during the counting of the Electoral College votes. More than 26,000 National Guard members were deployed to the capital for the inauguration, with thousands remaining into the spring."
+    ]
+  },
+  {
+    "input": "What is a one-line brief description in 25 words or less?",
+    "expected_output": "After Biden won the election, he formed a pandemic task force, the democrats won the Senate, and a mob stormed the Capital on January 6.",
+    "context": [
+      "Though Biden was generally acknowledged as the winner, General Services Administration head Emily W. Murphy initially refused to begin the transition to the president-elect, thereby denying funds and office space to his team. On November 23, after Michigan certified its results, Murphy issued the letter of ascertainment, granting the Biden transition team access to federal funds and resources for an orderly transition. Two days after becoming the projected winner of the 2020 election, Biden announced the formation of a task force to advise him on the COVID-19 pandemic during the transition, co-chaired by former Surgeon General Vivek Murthy, former FDA commissioner David A. Kessler, and Yale University's Marcella Nunez-Smith. On January 5, 2021, the Democratic Party won control of the United States Senate, effective January 20, as a result of electoral victories in Georgia by Jon Ossoff in a runoff election for a six-year term and Raphael Warnock in a special runoff election for a two-year term. President-elect Biden had supported and campaigned for both candidates prior to the runoff elections on January 5.On January 6, a mob of thousands of Trump supporters violently stormed the Capitol in the hope of overturning Biden's election, forcing Congress to evacuate during the counting of the Electoral College votes. More than 26,000 National Guard members were deployed to the capital for the inauguration, with thousands remaining into the spring."
+    ]
+  },
+  {
+    "input": "What is a list of all of the people mentioned?",
+    "expected_output": "\u2022Biden;\n\u2022Emily W. Murphy;\n\u2022Vivek Murthy;\n\u2022David A. Kessler;\n\u2022Marcella Nunez-Smith;\n\u2022Jon Ossoff;\n\u2022Raphael Warnock.",
+    "context": [
+      "Though Biden was generally acknowledged as the winner, General Services Administration head Emily W. Murphy initially refused to begin the transition to the president-elect, thereby denying funds and office space to his team. On November 23, after Michigan certified its results, Murphy issued the letter of ascertainment, granting the Biden transition team access to federal funds and resources for an orderly transition. Two days after becoming the projected winner of the 2020 election, Biden announced the formation of a task force to advise him on the COVID-19 pandemic during the transition, co-chaired by former Surgeon General Vivek Murthy, former FDA commissioner David A. Kessler, and Yale University's Marcella Nunez-Smith. On January 5, 2021, the Democratic Party won control of the United States Senate, effective January 20, as a result of electoral victories in Georgia by Jon Ossoff in a runoff election for a six-year term and Raphael Warnock in a special runoff election for a two-year term. President-elect Biden had supported and campaigned for both candidates prior to the runoff elections on January 5.On January 6, a mob of thousands of Trump supporters violently stormed the Capitol in the hope of overturning Biden's election, forcing Congress to evacuate during the counting of the Electoral College votes. More than 26,000 National Guard members were deployed to the capital for the inauguration, with thousands remaining into the spring."
+    ]
+  },
+  {
+    "input": "What was Microsoft's revenue in the 3rd quarter?",
+    "expected_output": "$52.9 billion",
+    "context": [
+      "Microsoft Cloud Strength Drives Third Quarter Results \nREDMOND, Wash. \u2014 April 25, 2023 \u2014 Microsoft Corp. today announced the following results for the quarter ended March 31, 2023, as compared to the corresponding period of last fiscal year:\n\u00b7 Revenue was $52.9 billion and increased 7% (up 10% in constant currency)\n\u00b7 Operating income was $22.4 billion and increased 10% (up 15% in constant currency)\n\u00b7 Net income was $18.3 billion and increased 9% (up 14% in constant currency)\n\u00b7 Diluted earnings per share was $2.45 and increased 10% (up 14% in constant currency).\n"
+    ]
+  },
+  {
+    "input": "Did third quarter revenue increase over the previous year?",
+    "expected_output": "Yes",
+    "context": [
+      "Microsoft Cloud Strength Drives Third Quarter Results \nREDMOND, Wash. \u2014 April 25, 2023 \u2014 Microsoft Corp. today announced the following results for the quarter ended March 31, 2023, as compared to the corresponding period of last fiscal year:\n\u00b7 Revenue was $52.9 billion and increased 7% (up 10% in constant currency)\n\u00b7 Operating income was $22.4 billion and increased 10% (up 15% in constant currency)\n\u00b7 Net income was $18.3 billion and increased 9% (up 14% in constant currency)\n\u00b7 Diluted earnings per share was $2.45 and increased 10% (up 14% in constant currency).\n"
+    ]
+  },
+  {
+    "input": "What was the improvement in operating income year-to-year?",
+    "expected_output": "Increased 10%, up 15% in constant currency",
+    "context": [
+      "Microsoft Cloud Strength Drives Third Quarter Results \nREDMOND, Wash. \u2014 April 25, 2023 \u2014 Microsoft Corp. today announced the following results for the quarter ended March 31, 2023, as compared to the corresponding period of last fiscal year:\n\u00b7 Revenue was $52.9 billion and increased 7% (up 10% in constant currency)\n\u00b7 Operating income was $22.4 billion and increased 10% (up 15% in constant currency)\n\u00b7 Net income was $18.3 billion and increased 9% (up 14% in constant currency)\n\u00b7 Diluted earnings per share was $2.45 and increased 10% (up 14% in constant currency).\n"
+    ]
+  },
+  {
+    "input": "What is the list of the top financial highlights for the quarter?",
+    "expected_output": "\u2022Revenue: $52.9 million, up 10% in constant currency;\n\u2022Operating income: $22.4 billion, up 15% in constant currency;\n\u2022Net income: $18.3 billion, up 14% in constant currency;\n\u2022Diluted earnings per share: $2.45 billion, up 14% in constant currency.",
+    "context": [
+      "Microsoft Cloud Strength Drives Third Quarter Results \nREDMOND, Wash. \u2014 April 25, 2023 \u2014 Microsoft Corp. today announced the following results for the quarter ended March 31, 2023, as compared to the corresponding period of last fiscal year:\n\u00b7 Revenue was $52.9 billion and increased 7% (up 10% in constant currency)\n\u00b7 Operating income was $22.4 billion and increased 10% (up 15% in constant currency)\n\u00b7 Net income was $18.3 billion and increased 9% (up 14% in constant currency)\n\u00b7 Diluted earnings per share was $2.45 and increased 10% (up 14% in constant currency).\n"
+    ]
+  },
+  {
+    "input": "When did the quarter end?",
+    "expected_output": "March 31, 2023",
+    "context": [
+      "Microsoft Cloud Strength Drives Third Quarter Results \nREDMOND, Wash. \u2014 April 25, 2023 \u2014 Microsoft Corp. today announced the following results for the quarter ended March 31, 2023, as compared to the corresponding period of last fiscal year:\n\u00b7 Revenue was $52.9 billion and increased 7% (up 10% in constant currency)\n\u00b7 Operating income was $22.4 billion and increased 10% (up 15% in constant currency)\n\u00b7 Net income was $18.3 billion and increased 9% (up 14% in constant currency)\n\u00b7 Diluted earnings per share was $2.45 and increased 10% (up 14% in constant currency).\n"
+    ]
+  },
+  {
+    "input": "According to the CFO, what led to the increase in cloud revenue?",
+    "expected_output": "Focused execution by our sales teams and partners",
+    "context": [
+      "'The world's most advanced AI models are coming together with the world's most universal user interface - natural language - to create a new era of computing,' said Satya Nadella, chairman and chief executive officer of Microsoft. 'Across the Microsoft Cloud, we are the platform of choice to help customers get the most value out of their digital spend and innovate for this next generation of AI.' 'Focused execution by our sales teams and partners in this dynamic environment resulted in Microsoft Cloud revenue of $28.5 billion, up 22% (up 25% in constant currency) year-over-year,' said Amy Hood, executive vice president and chief financial officer of Microsoft.\n"
+    ]
+  },
+  {
+    "input": "What was the amount of Cloud revenue in the quarter - (A) $52.9 billion, (B) $18.3 billion, (C) $17.5 billion, or (D) $28.5 billion?",
+    "expected_output": "(D) $28.5 billion",
+    "context": [
+      "'The world's most advanced AI models are coming together with the world's most universal user interface - natural language - to create a new era of computing,' said Satya Nadella, chairman and chief executive officer of Microsoft. 'Across the Microsoft Cloud, we are the platform of choice to help customers get the most value out of their digital spend and innovate for this next generation of AI.' 'Focused execution by our sales teams and partners in this dynamic environment resulted in Microsoft Cloud revenue of $28.5 billion, up 22% (up 25% in constant currency) year-over-year,' said Amy Hood, executive vice president and chief financial officer of Microsoft.\n"
+    ]
+  },
+  {
+    "input": "What is the statement from the CEO?",
+    "expected_output": "The world's most advanced AI models are coming together with the world's most universal user interface - natural language to create a new era of computing.  Across the Microsoft Cloud, we are the platform  of choice to help customers get the most value out of their digital spend and innovate for this next generation of AI.",
+    "context": [
+      "'The world's most advanced AI models are coming together with the world's most universal user interface - natural language - to create a new era of computing,' said Satya Nadella, chairman and chief executive officer of Microsoft. 'Across the Microsoft Cloud, we are the platform of choice to help customers get the most value out of their digital spend and innovate for this next generation of AI.' 'Focused execution by our sales teams and partners in this dynamic environment resulted in Microsoft Cloud revenue of $28.5 billion, up 22% (up 25% in constant currency) year-over-year,' said Amy Hood, executive vice president and chief financial officer of Microsoft.\n"
+    ]
+  },
+  {
+    "input": "What is a list of the executives and their titles?",
+    "expected_output": "\u2022Satya Nadella, Chairman and Chief Executive Officer;\n\u2022Amy Hood, Executive Vice President andChief Financial Officer",
+    "context": [
+      "'The world's most advanced AI models are coming together with the world's most universal user interface - natural language - to create a new era of computing,' said Satya Nadella, chairman and chief executive officer of Microsoft. 'Across the Microsoft Cloud, we are the platform of choice to help customers get the most value out of their digital spend and innovate for this next generation of AI.' 'Focused execution by our sales teams and partners in this dynamic environment resulted in Microsoft Cloud revenue of $28.5 billion, up 22% (up 25% in constant currency) year-over-year,' said Amy Hood, executive vice president and chief financial officer of Microsoft.\n"
+    ]
+  },
+  {
+    "input": "Who is the EVP of Human Resources?",
+    "expected_output": "Not Found.",
+    "context": [
+      "'The world's most advanced AI models are coming together with the world's most universal user interface - natural language - to create a new era of computing,' said Satya Nadella, chairman and chief executive officer of Microsoft. 'Across the Microsoft Cloud, we are the platform of choice to help customers get the most value out of their digital spend and innovate for this next generation of AI.' 'Focused execution by our sales teams and partners in this dynamic environment resulted in Microsoft Cloud revenue of $28.5 billion, up 22% (up 25% in constant currency) year-over-year,' said Amy Hood, executive vice president and chief financial officer of Microsoft.\n"
+    ]
+  },
+  {
+    "input": "Did Windows OEM revenue increase?",
+    "expected_output": "No, it decreased by 28%",
+    "context": [
+      "Business Highlights\nRevenue in Productivity and Business Processes was $17.5 billion and increased 11% (up 15% in constant currency), with the following business highlights:\n\u00b7 Office Commercial products and cloud services revenue increased 13% (up 17% in constant currency) driven by Office 365 Commercial revenue growth of 14% (up 18% in constant currency).\n\u00b7 Office Consumer products and cloud services revenue increased 1% (up 4% in constant currency) and Microsoft 365 Consumer subscribers grew to 65.4 million.\n\u00b7 LinkedIn revenue increased 8% (up 10% in constant currency).\n\u00b7 Dynamics products and cloud services revenue increased 17% (up 21% in constant currency) driven by Dynamics 365 revenue growth of 25% (up 29% in constant currency).\nRevenue in Intelligent Cloud was $22.1 billion and increased 16% (up 19% in constant currency), with the following business highlights:\n\u00b7 Server products and cloud services revenue increased 17% (up 21% in constant currency) driven by Azure and other cloud services revenue growth of 27% (up 31% in constant currency).\nRevenue in More Personal Computing was $13.3 billion and decreased 9% (down 7% in constant currency), with the following business highlights:\n\u00b7 Windows OEM revenue decreased 28%;\n\u00b7 Devices revenue decreased 30% (down 26% in constant currency);\n\u00b7 Windows Commercial products and cloud services revenue increased 14% (up 18% in constant currency)'\n\u00b7 Xbox content and services revenue increased 3% (up 5% in constant currency);\n\u00b7 Search and news advertising revenue excluding traffic acquisition costs increased 10% (up 13% in constant currency.)"
+    ]
+  },
+  {
+    "input": "What was LinkedIn revenue growth in constant currency?",
+    "expected_output": "10%",
+    "context": [
+      "Business Highlights\nRevenue in Productivity and Business Processes was $17.5 billion and increased 11% (up 15% in constant currency), with the following business highlights:\n\u00b7 Office Commercial products and cloud services revenue increased 13% (up 17% in constant currency) driven by Office 365 Commercial revenue growth of 14% (up 18% in constant currency).\n\u00b7 Office Consumer products and cloud services revenue increased 1% (up 4% in constant currency) and Microsoft 365 Consumer subscribers grew to 65.4 million.\n\u00b7 LinkedIn revenue increased 8% (up 10% in constant currency).\n\u00b7 Dynamics products and cloud services revenue increased 17% (up 21% in constant currency) driven by Dynamics 365 revenue growth of 25% (up 29% in constant currency).\nRevenue in Intelligent Cloud was $22.1 billion and increased 16% (up 19% in constant currency), with the following business highlights:\n\u00b7 Server products and cloud services revenue increased 17% (up 21% in constant currency) driven by Azure and other cloud services revenue growth of 27% (up 31% in constant currency).\nRevenue in More Personal Computing was $13.3 billion and decreased 9% (down 7% in constant currency), with the following business highlights:\n\u00b7 Windows OEM revenue decreased 28%;\n\u00b7 Devices revenue decreased 30% (down 26% in constant currency);\n\u00b7 Windows Commercial products and cloud services revenue increased 14% (up 18% in constant currency)'\n\u00b7 Xbox content and services revenue increased 3% (up 5% in constant currency);\n\u00b7 Search and news advertising revenue excluding traffic acquisition costs increased 10% (up 13% in constant currency.)"
+    ]
+  },
+  {
+    "input": "What is a list of top Microsoft product offerings?",
+    "expected_output": "\u2022Office Commercial Products;\n\u2022Office Consumer Products;\n\u2022Microsoft 365 Consumer;\n\u2022LinkedIn;\n\u2022Dynamics Products;\n\u2022Server Products;\n\u2022More Personal Computing;\n\u2022Windows OEM;\n\u2022Devices;\n\u2022Windows Commercial;\n\u2022Xbox;\n\u2022Search and News Advertising.",
+    "context": [
+      "Business Highlights\nRevenue in Productivity and Business Processes was $17.5 billion and increased 11% (up 15% in constant currency), with the following business highlights:\n\u00b7 Office Commercial products and cloud services revenue increased 13% (up 17% in constant currency) driven by Office 365 Commercial revenue growth of 14% (up 18% in constant currency).\n\u00b7 Office Consumer products and cloud services revenue increased 1% (up 4% in constant currency) and Microsoft 365 Consumer subscribers grew to 65.4 million.\n\u00b7 LinkedIn revenue increased 8% (up 10% in constant currency).\n\u00b7 Dynamics products and cloud services revenue increased 17% (up 21% in constant currency) driven by Dynamics 365 revenue growth of 25% (up 29% in constant currency).\nRevenue in Intelligent Cloud was $22.1 billion and increased 16% (up 19% in constant currency), with the following business highlights:\n\u00b7 Server products and cloud services revenue increased 17% (up 21% in constant currency) driven by Azure and other cloud services revenue growth of 27% (up 31% in constant currency).\nRevenue in More Personal Computing was $13.3 billion and decreased 9% (down 7% in constant currency), with the following business highlights:\n\u00b7 Windows OEM revenue decreased 28%;\n\u00b7 Devices revenue decreased 30% (down 26% in constant currency);\n\u00b7 Windows Commercial products and cloud services revenue increased 14% (up 18% in constant currency)'\n\u00b7 Xbox content and services revenue increased 3% (up 5% in constant currency);\n\u00b7 Search and news advertising revenue excluding traffic acquisition costs increased 10% (up 13% in constant currency.)"
+    ]
+  },
+  {
+    "input": "What is the number of Microsoft 365 consumer subscribers?",
+    "expected_output": "65.4 million",
+    "context": [
+      "Business Highlights\nRevenue in Productivity and Business Processes was $17.5 billion and increased 11% (up 15% in constant currency), with the following business highlights:\n\u00b7 Office Commercial products and cloud services revenue increased 13% (up 17% in constant currency) driven by Office 365 Commercial revenue growth of 14% (up 18% in constant currency).\n\u00b7 Office Consumer products and cloud services revenue increased 1% (up 4% in constant currency) and Microsoft 365 Consumer subscribers grew to 65.4 million.\n\u00b7 LinkedIn revenue increased 8% (up 10% in constant currency).\n\u00b7 Dynamics products and cloud services revenue increased 17% (up 21% in constant currency) driven by Dynamics 365 revenue growth of 25% (up 29% in constant currency).\nRevenue in Intelligent Cloud was $22.1 billion and increased 16% (up 19% in constant currency), with the following business highlights:\n\u00b7 Server products and cloud services revenue increased 17% (up 21% in constant currency) driven by Azure and other cloud services revenue growth of 27% (up 31% in constant currency).\nRevenue in More Personal Computing was $13.3 billion and decreased 9% (down 7% in constant currency), with the following business highlights:\n\u00b7 Windows OEM revenue decreased 28%;\n\u00b7 Devices revenue decreased 30% (down 26% in constant currency);\n\u00b7 Windows Commercial products and cloud services revenue increased 14% (up 18% in constant currency)'\n\u00b7 Xbox content and services revenue increased 3% (up 5% in constant currency);\n\u00b7 Search and news advertising revenue excluding traffic acquisition costs increased 10% (up 13% in constant currency.)"
+    ]
+  },
+  {
+    "input": "What was the amount of total revenue in Intelligent Cloud?",
+    "expected_output": "$22.1 billion",
+    "context": [
+      "Business Highlights\nRevenue in Productivity and Business Processes was $17.5 billion and increased 11% (up 15% in constant currency), with the following business highlights:\n\u00b7 Office Commercial products and cloud services revenue increased 13% (up 17% in constant currency) driven by Office 365 Commercial revenue growth of 14% (up 18% in constant currency).\n\u00b7 Office Consumer products and cloud services revenue increased 1% (up 4% in constant currency) and Microsoft 365 Consumer subscribers grew to 65.4 million.\n\u00b7 LinkedIn revenue increased 8% (up 10% in constant currency).\n\u00b7 Dynamics products and cloud services revenue increased 17% (up 21% in constant currency) driven by Dynamics 365 revenue growth of 25% (up 29% in constant currency).\nRevenue in Intelligent Cloud was $22.1 billion and increased 16% (up 19% in constant currency), with the following business highlights:\n\u00b7 Server products and cloud services revenue increased 17% (up 21% in constant currency) driven by Azure and other cloud services revenue growth of 27% (up 31% in constant currency).\nRevenue in More Personal Computing was $13.3 billion and decreased 9% (down 7% in constant currency), with the following business highlights:\n\u00b7 Windows OEM revenue decreased 28%;\n\u00b7 Devices revenue decreased 30% (down 26% in constant currency);\n\u00b7 Windows Commercial products and cloud services revenue increased 14% (up 18% in constant currency)'\n\u00b7 Xbox content and services revenue increased 3% (up 5% in constant currency);\n\u00b7 Search and news advertising revenue excluding traffic acquisition costs increased 10% (up 13% in constant currency.)"
+    ]
+  }
+]

@@ -1,0 +1,49 @@
+# Cloud Run deployment configuration
+# Secrets are stored in GCP Secret Manager with naming convention: <prototype>-<name>
+#
+# IAM Requirements for GCS signed URLs:
+# The Cloud Run service account needs these roles:
+#   1. roles/storage.objectAdmin on gs://rag-agent-uploads-bucket
+#   2. roles/iam.serviceAccountTokenCreator on itself (for signing URLs)
+#
+# Grant with:
+#   gcloud storage buckets add-iam-policy-binding gs://rag-agent-uploads-bucket \
+#     --member="serviceAccount:SERVICE_ACCOUNT_EMAIL" \
+#     --role="roles/storage.objectAdmin"
+#
+#   gcloud iam service-accounts add-iam-policy-binding SERVICE_ACCOUNT_EMAIL \
+#     --member="serviceAccount:SERVICE_ACCOUNT_EMAIL" \
+#     --role="roles/iam.serviceAccountTokenCreator"
+
+secrets:
+  # Required secrets (deployment will fail if not present in Secret Manager)
+  - env: MONGODB_URI
+    secret: rag-agent-mongodb-uri
+    required: true
+
+  - env: GEMINI_API_KEY
+    secret: rag-agent-gemini-api-key
+    required: true
+
+  - env: HF_TOKEN
+    secret: rag-agent-hf-token
+    required: true
+
+env:
+  # Optional environment variables with defaults (not secrets)
+  - name: LOG_LEVEL
+    value: INFO
+
+  - name: MONGODB_DATABASE
+    value: rag_agent
+
+  - name: STORAGE_BACKEND
+    value: mongodb
+
+  - name: GCS_BUCKET
+    value: rag-agent-uploads-bucket
+
+# Resource limits for large PDF processing
+resources:
+  memory: 6Gi
+  cpu: "4"

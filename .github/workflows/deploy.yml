@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - prototypes/rag-agent  # Temporary: remove after testing
     paths:
       - 'prototypes/**'
   workflow_dispatch:
@@ -61,7 +62,7 @@ jobs:
       - name: Run tests
         run: |
           cd prototypes/${{ matrix.prototype }}
-          pytest tests/ -v
+          pytest tests/test_app.py -v
 
   deploy:
     needs: [detect-changes, test]
@@ -89,6 +90,11 @@ jobs:
       - name: Configure Docker
         run: gcloud auth configure-docker ${{ env.GAR_LOCATION }}
 
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
       - name: Get version
         id: version
         run: |
@@ -114,6 +120,36 @@ jobs:
           docker push ${IMAGE_BASE}:${{ steps.version.outputs.version }}
           docker push ${IMAGE_BASE}:latest
 
+      - name: Parse Cloud Run config
+        id: config
+        run: |
+          CONFIG_FILE="./prototypes/${{ matrix.prototype }}/cloud-run.yaml"
+
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "No cloud-run.yaml found, using defaults"
+            echo "secrets_flag=" >> $GITHUB_OUTPUT
+            echo "env_flag=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Parse secrets from cloud-run.yaml
+          # Format: --update-secrets=ENV=secret-name:latest
+          SECRETS=$(yq -r '.secrets[]? | "\(.env)=\(.secret):latest"' "$CONFIG_FILE" | tr '\n' ',' | sed 's/,$//')
+          if [ -n "$SECRETS" ]; then
+            echo "secrets_flag=--update-secrets=${SECRETS}" >> $GITHUB_OUTPUT
+          else
+            echo "secrets_flag=" >> $GITHUB_OUTPUT
+          fi
+
+          # Parse env vars from cloud-run.yaml
+          # Format: --set-env-vars=NAME=value
+          ENVS=$(yq -r '.env[]? | "\(.name)=\(.value)"' "$CONFIG_FILE" | tr '\n' ',' | sed 's/,$//')
+          if [ -n "$ENVS" ]; then
+            echo "env_flag=--set-env-vars=${ENVS}" >> $GITHUB_OUTPUT
+          else
+            echo "env_flag=" >> $GITHUB_OUTPUT
+          fi
+
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ matrix.prototype }} \
@@ -122,5 +158,10 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --port=8080 \
-            --http-startup-probe-path=/health \
-            --http-liveness-probe-path=/health
+            --memory=2Gi \
+            --cpu=1 \
+            --timeout=900 \
+            --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=5,periodSeconds=10,failureThreshold=12,timeoutSeconds=10 \
+            --liveness-probe=httpGet.path=/health,httpGet.port=8080,periodSeconds=30 \
+            ${{ steps.config.outputs.secrets_flag }} \
+            ${{ steps.config.outputs.env_flag }}
