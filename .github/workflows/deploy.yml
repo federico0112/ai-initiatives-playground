@@ -155,6 +155,20 @@ jobs:
             echo "env_flag=" >> $GITHUB_OUTPUT
           fi
 
+          # Parse resource limits from cloud-run.yaml
+          MEMORY=$(yq -r '.resources.memory // ""' "$CONFIG_FILE")
+          CPU=$(yq -r '.resources.cpu // ""' "$CONFIG_FILE")
+          if [ -n "$MEMORY" ]; then
+            echo "memory_flag=--memory=${MEMORY}" >> $GITHUB_OUTPUT
+          else
+            echo "memory_flag=" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "$CPU" ]; then
+            echo "cpu_flag=--cpu=${CPU}" >> $GITHUB_OUTPUT
+          else
+            echo "cpu_flag=" >> $GITHUB_OUTPUT
+          fi
+
       - name: Deploy to Cloud Run
         run: |
           MAX_ATTEMPTS=3
@@ -173,7 +187,9 @@ jobs:
               --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=5,periodSeconds=10,failureThreshold=12,timeoutSeconds=10 \
               --liveness-probe=httpGet.path=/health,httpGet.port=8080,periodSeconds=30 \
               ${{ steps.config.outputs.secrets_flag }} \
-              ${{ steps.config.outputs.env_flag }}; then
+              ${{ steps.config.outputs.env_flag }} \
+              ${{ steps.config.outputs.memory_flag }} \
+              ${{ steps.config.outputs.cpu_flag }}; then
               echo "Deployment successful"
               exit 0
             fi
