@@ -69,6 +69,7 @@ jobs:
     if: needs.detect-changes.outputs.prototypes != '[]'
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false  # Continue deploying other prototypes if one fails
       matrix:
         prototype: ${{ fromJson(needs.detect-changes.outputs.prototypes) }}
 
@@ -134,8 +135,10 @@ jobs:
 
           # Parse secrets from cloud-run.yaml
           # Format: --update-secrets=ENV=secret-name:latest
-          SECRETS=$(yq -r '.secrets[]? | "\(.env)=\(.secret):latest"' "$CONFIG_FILE" | tr '\n' ',' | sed 's/,$//')
-          if [ -n "$SECRETS" ]; then
+          # First check if secrets array has items (avoids empty array issues)
+          SECRETS_COUNT=$(yq '.secrets | length' "$CONFIG_FILE")
+          if [ "$SECRETS_COUNT" -gt 0 ]; then
+            SECRETS=$(yq -r '.secrets[] | "\(.env)=\(.secret):latest"' "$CONFIG_FILE" | tr '\n' ',' | sed 's/,$//')
             echo "secrets_flag=--update-secrets=${SECRETS}" >> $GITHUB_OUTPUT
           else
             echo "secrets_flag=" >> $GITHUB_OUTPUT
@@ -143,8 +146,10 @@ jobs:
 
           # Parse env vars from cloud-run.yaml
           # Format: --set-env-vars=NAME=value
-          ENVS=$(yq -r '.env[]? | "\(.name)=\(.value)"' "$CONFIG_FILE" | tr '\n' ',' | sed 's/,$//')
-          if [ -n "$ENVS" ]; then
+          # First check if env array has items
+          ENV_COUNT=$(yq '.env | length' "$CONFIG_FILE")
+          if [ "$ENV_COUNT" -gt 0 ]; then
+            ENVS=$(yq -r '.env[] | "\(.name)=\(.value)"' "$CONFIG_FILE" | tr '\n' ',' | sed 's/,$//')
             echo "env_flag=--set-env-vars=${ENVS}" >> $GITHUB_OUTPUT
           else
             echo "env_flag=" >> $GITHUB_OUTPUT
@@ -152,16 +157,34 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy ${{ matrix.prototype }} \
-            --image ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/ai-prototypes/${{ matrix.prototype }}:${{ steps.version.outputs.full_tag }} \
-            --region ${{ env.REGION }} \
-            --platform managed \
-            --allow-unauthenticated \
-            --port=8080 \
-            --memory=2Gi \
-            --cpu=1 \
-            --timeout=900 \
-            --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=5,periodSeconds=10,failureThreshold=12,timeoutSeconds=10 \
-            --liveness-probe=httpGet.path=/health,httpGet.port=8080,periodSeconds=30 \
-            ${{ steps.config.outputs.secrets_flag }} \
-            ${{ steps.config.outputs.env_flag }}
+          MAX_ATTEMPTS=3
+          ATTEMPT=1
+
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Deployment attempt $ATTEMPT of $MAX_ATTEMPTS"
+
+            if gcloud run deploy ${{ matrix.prototype }} \
+              --image ${{ env.GAR_LOCATION }}/${{ env.PROJECT_ID }}/ai-prototypes/${{ matrix.prototype }}:${{ steps.version.outputs.full_tag }} \
+              --region ${{ env.REGION }} \
+              --platform managed \
+              --allow-unauthenticated \
+              --port=8080 \
+              --timeout=900 \
+              --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=5,periodSeconds=10,failureThreshold=12,timeoutSeconds=10 \
+              --liveness-probe=httpGet.path=/health,httpGet.port=8080,periodSeconds=30 \
+              ${{ steps.config.outputs.secrets_flag }} \
+              ${{ steps.config.outputs.env_flag }}; then
+              echo "Deployment successful"
+              exit 0
+            fi
+
+            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+              echo "Deployment failed, retrying in 30 seconds..."
+              sleep 30
+            fi
+
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+
+          echo "Deployment failed after $MAX_ATTEMPTS attempts"
+          exit 1
