@@ -4,58 +4,108 @@ A Retrieval-Augmented Generation (RAG) service that enables document Q&A. Upload
 
 ## Architecture
 
+```mermaid
+flowchart TB
+    subgraph Users["👤 Users"]
+        Browser["🌐 Browser"]
+    end
+
+    subgraph GitHub["GitHub"]
+        Repo["📦 Repository"]
+        Actions["⚙️ GitHub Actions"]
+    end
+
+    subgraph GCP["Google Cloud Platform"]
+        subgraph CloudRun["Cloud Run"]
+            FastAPI["🚀 FastAPI Server"]
+            subgraph Endpoints["API Endpoints"]
+                Upload["/upload"]
+                Search["/search"]
+                Chat["/chat"]
+                Docs["/documents"]
+            end
+        end
+
+        subgraph Storage["Cloud Storage"]
+            GCS["📁 GCS Bucket"]
+        end
+
+        subgraph Registry["Artifact Registry"]
+            Docker["🐳 Docker Images"]
+        end
+
+        subgraph Secrets["Secret Manager"]
+            SecretsMgr["🔐 Secrets"]
+        end
+    end
+
+    subgraph GoogleAI["Google AI"]
+        subgraph EmbeddingModels["Embedding Models"]
+            GeminiEmbed2["gemini-embedding-2"]
+            GeminiEmbed001["gemini-embedding-001"]
+        end
+        subgraph ChatModels["Chat Models"]
+            Gemini25Flash["gemini-2.5-flash"]
+            Gemini25Pro["gemini-2.5-pro"]
+            Gemini38Flash["gemini-3.8-flash"]
+        end
+    end
+
+    subgraph MongoDB["MongoDB Atlas"]
+        VectorDB[("🗄️ Vector Store")]
+        VectorIndex["Vector Search Index"]
+    end
+
+    %% User Flow
+    Browser -->|"HTTPS"| FastAPI
+
+    %% CI/CD Flow
+    Repo -->|"Push to main"| Actions
+    Actions -->|"Build & Push"| Docker
+    Docker -->|"Deploy"| FastAPI
+    SecretsMgr -.->|"Inject"| FastAPI
+
+    %% Upload Flow
+    FastAPI -->|"1. Get Signed URL"| GCS
+    Browser -->|"2. Upload File"| GCS
+    FastAPI -->|"3. Download & Process"| GCS
+
+    %% Embedding Flow
+    FastAPI -->|"Embed Text"| EmbeddingModels
+    EmbeddingModels -->|"Vectors (768 dims)"| FastAPI
+
+    %% Storage Flow
+    FastAPI -->|"Store/Query"| VectorDB
+    VectorIndex -.->|"Similarity Search"| VectorDB
+
+    %% Chat Flow
+    FastAPI -->|"RAG Query"| ChatModels
+    ChatModels -->|"Stream Response"| FastAPI
+
+    %% Styling
+    classDef gcp fill:#4285f4,color:#fff
+    classDef mongodb fill:#00684a,color:#fff
+    classDef google fill:#ea4335,color:#fff
+    classDef github fill:#24292e,color:#fff
+
+    class CloudRun,Storage,Registry,Secrets gcp
+    class VectorDB,VectorIndex mongodb
+    class EmbeddingModels,ChatModels google
+    class Repo,Actions github
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              RAG Agent System                                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌─────────────┐     ┌──────────────────────────────────────────────────┐  │
-│  │   Browser   │     │                  FastAPI Server                   │  │
-│  │     UI      │────▶│                                                   │  │
-│  └─────────────┘     │  ┌─────────────┐  ┌─────────────┐  ┌───────────┐ │  │
-│                      │  │   Upload    │  │   Search    │  │   Chat    │ │  │
-│                      │  │  Endpoint   │  │  Endpoint   │  │ Endpoint  │ │  │
-│                      │  └──────┬──────┘  └──────┬──────┘  └─────┬─────┘ │  │
-│                      └─────────┼────────────────┼───────────────┼───────┘  │
-│                                │                │               │          │
-│                                ▼                ▼               ▼          │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │                        Document Processing                           │  │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐                           │  │
-│  │  │   PDF    │  │   TXT    │  │   DOCX   │   Chunking & Extraction   │  │
-│  │  │  Parser  │  │  Parser  │  │  Parser  │                           │  │
-│  │  └──────────┘  └──────────┘  └──────────┘                           │  │
-│  └─────────────────────────────────┬───────────────────────────────────┘  │
-│                                    │                                       │
-│                                    ▼                                       │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │                         Embedders Registry                           │  │
-│  │  ┌────────────────────┐  ┌────────────────────┐                     │  │
-│  │  │ gemini-embedding-2 │  │gemini-embedding-001│                     │  │
-│  │  │   (recommended)    │  │    (text-only)     │                     │  │
-│  │  └─────────┬──────────┘  └─────────┬──────────┘                     │  │
-│  └────────────┼───────────────────────┼────────────────────────────────┘  │
-│               │                       │                                    │
-│               └───────────┬───────────┘                                    │
-│                           ▼                                                │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │                      Google Gemini API                               │  │
-│  │            Embedding Models  &  Chat Models                          │  │
-│  │  (gemini-embedding-2, gemini-2.5-flash, gemini-2.5-pro, etc.)       │  │
-│  └─────────────────────────────────┬───────────────────────────────────┘  │
-│                                    │                                       │
-│                                    ▼                                       │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │                      MongoDB Atlas Storage                           │  │
-│  │  ┌─────────────────────────────────────────────────────────────┐   │  │
-│  │  │                    Vector Search Index                       │   │  │
-│  │  │   • document_id    • filename    • model                     │   │  │
-│  │  │   • embedding (768 dims)         • text chunks               │   │  │
-│  │  └─────────────────────────────────────────────────────────────┘   │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+
+### System Components
+
+| Component | Service | Purpose |
+|-----------|---------|---------|
+| **Web Server** | Cloud Run | Hosts FastAPI application |
+| **File Storage** | GCS Bucket | Temporary storage for uploaded documents |
+| **Vector Database** | MongoDB Atlas | Stores embeddings with vector search |
+| **Embeddings** | Gemini API | Converts text to vector embeddings |
+| **Chat/LLM** | Gemini API | Generates responses for RAG queries |
+| **Secrets** | Secret Manager | Stores API keys and connection strings |
+| **CI/CD** | GitHub Actions | Automated testing and deployment |
+| **Container Registry** | Artifact Registry | Stores Docker images |
 
 ## Features
 
