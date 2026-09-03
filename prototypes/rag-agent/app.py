@@ -1,5 +1,6 @@
 """RAG agent service prototype."""
 
+import asyncio
 import json
 import logging
 import os
@@ -10,7 +11,7 @@ from typing import AsyncGenerator
 from dotenv import load_dotenv
 load_dotenv()  # Load .env before other imports that need env vars
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -63,7 +64,9 @@ MAX_TOP_K = 20
 class SearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=MAX_QUERY_LENGTH)
     limit: int = Field(default=5, ge=MIN_LIMIT, le=MAX_LIMIT)
-    model: str = "gemini"
+    model: str = "gemini-embedding-2"
+    filenames: list[str] | None = None
+    filter_model: str | None = None  # Filter results by embedding model
 
 
 class ChatRequest(BaseModel):
@@ -71,6 +74,8 @@ class ChatRequest(BaseModel):
     session_id: str | None = None
     top_k: int = Field(default=DEFAULT_TOP_K, ge=1, le=MAX_TOP_K)
     model: str = DEFAULT_MODEL
+    embedder: str = "gemini-embedding-2"
+    filenames: list[str] | None = None
 
 
 class SignedUrlRequest(BaseModel):
@@ -80,7 +85,7 @@ class SignedUrlRequest(BaseModel):
 
 class EmbedFromGCSRequest(BaseModel):
     gcs_path: str = Field(..., min_length=1)
-    model: str = "gemini"
+    model: str = "gemini-embedding-2"
     cleanup: bool = True
 
 
@@ -275,131 +280,6 @@ async def list_chat_models():
     return {"models": models}
 
 
-@app.post("/api/v1/upload")
-async def upload(
-    file: UploadFile = File(...),
-    model: str = Form(default="gemini"),
-):
-    """Upload and embed a document.
-
-    Args:
-        file: The document file (PDF, TXT, or DOCX)
-        model: Embedding model to use, default "gemini"
-
-    Returns:
-        JSON with document_id and chunks_stored count.
-    """
-    logger.info("Upload request received")
-
-    if not file.filename:
-        logger.warning("Upload request has empty filename")
-        raise ValidationError(
-            message="No filename provided",
-            code=ErrorCode.VALIDATION_MISSING_FILENAME,
-        )
-
-    logger.info(
-        "Processing upload: filename=%s, model=%s",
-        file.filename,
-        model,
-    )
-
-    # Validate model
-    if model not in EMBEDDERS:
-        available = ", ".join(EMBEDDERS.keys())
-        logger.warning(
-            "Invalid model requested: %s (available: %s)",
-            model,
-            available,
-        )
-        raise ValidationError(
-            message=f"Unknown model: {model}. Available: {available}",
-            code=ErrorCode.VALIDATION_INVALID_MODEL,
-            details={"available_models": list(EMBEDDERS.keys())},
-        )
-
-    # Process file into chunks
-    logger.debug("Reading file content")
-    file_content = await file.read()
-    logger.info(
-        "File read: %s (%d bytes)",
-        file.filename,
-        len(file_content),
-    )
-
-    try:
-        logger.debug("Processing file into chunks")
-        documents = process_file(file_content, file.filename)
-    except ValueError as e:
-        if "Unsupported file type" in str(e):
-            raise ValidationError(
-                message=str(e),
-                code=ErrorCode.VALIDATION_UNSUPPORTED_FILE,
-                details={"supported_extensions": list(SUPPORTED_EXTENSIONS)},
-            ) from e
-        raise
-
-    if not documents:
-        logger.warning("No content extracted from file: %s", file.filename)
-        raise ValidationError(
-            message="No content extracted from file",
-            code=ErrorCode.VALIDATION_EMPTY_CONTENT,
-        )
-
-    # Extract text and metadata from documents
-    chunks = [doc.content for doc in documents]
-    chunk_metadata = [doc.metadata for doc in documents]
-    logger.info(
-        "File processed into %d chunks",
-        len(chunks),
-    )
-    logger.debug(
-        "Chunk sizes: %s",
-        [len(c) for c in chunks],
-    )
-
-    # Generate embeddings
-    logger.debug("Initializing embedder: %s", model)
-    embedder = get_embedder(model)
-
-    logger.info("Generating embeddings for %d chunks", len(chunks))
-    embeddings = embedder.embed_batched(chunks)
-    logger.info(
-        "Embeddings generated: %d vectors of dimension %d",
-        len(embeddings),
-        len(embeddings[0]) if embeddings else 0,
-    )
-
-    # Store in storage backend
-    document_id = str(uuid.uuid4())
-    logger.info(
-        "Storing document: id=%s, chunks=%d",
-        document_id,
-        len(chunks),
-    )
-
-    storage = get_storage()
-    chunks_stored = storage.store_embeddings(
-        document_id=document_id,
-        filename=file.filename,
-        chunks=chunks,
-        embeddings=embeddings,
-        model=model,
-        chunk_metadata=chunk_metadata,
-    )
-
-    logger.info(
-        "Upload complete: document_id=%s, chunks_stored=%d",
-        document_id,
-        chunks_stored,
-    )
-
-    return {
-        "document_id": document_id,
-        "chunks_stored": chunks_stored,
-    }
-
-
 @app.post("/api/v1/upload/signed-url")
 async def get_signed_upload_url(request: SignedUrlRequest):
     """Get a signed URL for direct upload to GCS.
@@ -498,8 +378,6 @@ async def embed_from_gcs(request: EmbedFromGCSRequest):
     Returns:
         JSON with document_id, chunks_stored, and source
     """
-    import asyncio
-
     logger.info("Embed from GCS request: %s", request.gcs_path)
 
     # Validate model
@@ -530,12 +408,96 @@ async def embed_from_gcs(request: EmbedFromGCSRequest):
         raise
 
 
+def _process_search(
+    query: str,
+    limit: int,
+    model_name: str,
+    filenames: list[str] | None = None,
+    filter_model: str | None = None,
+) -> list:
+    """Synchronous helper for search (runs in thread pool)."""
+    # Embed the query
+    embedder = get_embedder(model_name)
+    query_embedding = embedder.embed_query(query)
+    logger.debug("Query embedding dimension: %d", len(query_embedding))
+
+    # Search storage backend
+    logger.info("Executing vector search")
+    storage = get_storage()
+    results = storage.vector_search(
+        query_embedding=query_embedding,
+        limit=limit,
+        filenames=filenames,
+        model=filter_model,
+    )
+
+    logger.info("Search complete: %d results", len(results))
+    return results
+
+
+@app.get("/api/v1/documents")
+async def list_documents(model: str | None = None):
+    """List all uploaded documents.
+
+    Args:
+        model: Optional embedding model name to filter results.
+
+    Returns:
+        JSON with list of documents (filename, document_id, chunk_count, model, created_at).
+    """
+    logger.info("List documents request received (model=%s)", model)
+    storage = get_storage()
+    documents = await asyncio.to_thread(storage.list_documents, model)
+    logger.info("Found %d documents", len(documents))
+    return {"documents": documents}
+
+
+@app.get("/api/v1/document-models")
+async def list_document_models():
+    """List all unique embedding models used in stored documents.
+
+    Returns:
+        JSON with list of unique model names.
+    """
+    logger.info("List document models request received")
+    storage = get_storage()
+    models = await asyncio.to_thread(storage.list_unique_models)
+    logger.info("Found %d unique models", len(models))
+    return {"models": models}
+
+
+@app.delete("/api/v1/documents/{document_id}")
+async def delete_document(document_id: str):
+    """Delete a document and all its chunks.
+
+    Args:
+        document_id: The unique identifier of the document to delete.
+
+    Returns:
+        JSON with document_id and deleted_chunks count.
+
+    Raises:
+        HTTPException: 404 if document not found.
+    """
+    logger.info("Delete document request: %s", document_id)
+    storage = get_storage()
+    deleted_count = await asyncio.to_thread(storage.delete_document, document_id)
+
+    if deleted_count == 0:
+        logger.warning("Document not found: %s", document_id)
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    logger.info("Deleted document %s (%d chunks)", document_id, deleted_count)
+    return {"document_id": document_id, "deleted_chunks": deleted_count}
+
+
 @app.post("/api/v1/search")
 async def search(request: SearchRequest):
     """Search for similar documents.
 
     Args:
-        request: SearchRequest with query, limit, and model
+        request: SearchRequest with query, limit, model, optional filenames filter,
+                 and optional filter_model to filter results by embedding model
 
     Returns:
         JSON with list of matching document chunks and scores.
@@ -545,12 +507,16 @@ async def search(request: SearchRequest):
     query = request.query
     limit = request.limit
     model_name = request.model
+    filenames = request.filenames
+    filter_model = request.filter_model
 
     logger.info(
-        "Processing search: query=%r, limit=%d, model=%s",
+        "Processing search: query=%r, limit=%d, model=%s, filenames=%s, filter_model=%s",
         query[:50] + "..." if len(query) > 50 else query,
         limit,
         model_name,
+        filenames,
+        filter_model,
     )
 
     # Validate model
@@ -567,23 +533,15 @@ async def search(request: SearchRequest):
             details={"available_models": list(EMBEDDERS.keys())},
         )
 
-    # Embed the query
-    logger.debug("Initializing embedder: %s", model_name)
-    embedder = get_embedder(model_name)
-
-    logger.info("Generating query embedding")
-    query_embedding = embedder.embed_query(query)
-    logger.debug("Query embedding dimension: %d", len(query_embedding))
-
-    # Search storage backend
-    logger.info("Executing vector search")
-    storage = get_storage()
-    results = storage.vector_search(
-        query_embedding=query_embedding,
-        limit=limit,
+    # Run blocking operations in thread pool
+    results = await asyncio.to_thread(
+        _process_search,
+        query,
+        limit,
+        model_name,
+        filenames,
+        filter_model,
     )
-
-    logger.info("Search complete: %d results", len(results))
 
     return {
         "query": query,
@@ -611,27 +569,45 @@ async def chat(request: ChatRequest):
     session_id = request.session_id
     top_k = request.top_k
     model = request.model
+    embedder = request.embedder
+    filenames = request.filenames
 
-    # Validate model
+    # Validate chat model
     if model not in SUPPORTED_MODELS:
         available = ", ".join(SUPPORTED_MODELS)
         logger.warning(
-            "Invalid model requested: %s (available: %s)",
+            "Invalid chat model requested: %s (available: %s)",
             model,
             available,
         )
         raise ValidationError(
-            message=f"Unknown model: {model}. Available: {available}",
+            message=f"Unknown chat model: {model}. Available: {available}",
             code=ErrorCode.VALIDATION_INVALID_MODEL,
             details={"available_models": list(SUPPORTED_MODELS)},
         )
 
+    # Validate embedder
+    if embedder not in EMBEDDERS:
+        available = ", ".join(EMBEDDERS.keys())
+        logger.warning(
+            "Invalid embedder requested: %s (available: %s)",
+            embedder,
+            available,
+        )
+        raise ValidationError(
+            message=f"Unknown embedder: {embedder}. Available: {available}",
+            code=ErrorCode.VALIDATION_INVALID_MODEL,
+            details={"available_models": list(EMBEDDERS.keys())},
+        )
+
     logger.info(
-        "Processing chat: message=%r, session_id=%s, top_k=%d, model=%s",
+        "Processing chat: message=%r, session_id=%s, top_k=%d, model=%s, embedder=%s, filenames=%s",
         message[:50] + "..." if len(message) > 50 else message,
         session_id,
         top_k,
         model,
+        embedder,
+        filenames,
     )
 
     # Get or create session
@@ -660,6 +636,8 @@ async def chat(request: ChatRequest):
                 chat_history=chat_history,
                 model=model,
                 top_k=top_k,
+                embedder=embedder,
+                filenames=filenames,
             ):
                 yield json.dumps(event) + "\n"
 
@@ -711,15 +689,6 @@ async def models_legacy():
 async def storages_legacy():
     """Legacy storages endpoint."""
     return await list_storages()
-
-
-@app.post("/upload")
-async def upload_legacy(
-    file: UploadFile = File(...),
-    model: str = Form(default="gemini"),
-):
-    """Legacy upload endpoint."""
-    return await upload(file=file, model=model)
 
 
 @app.post("/search")

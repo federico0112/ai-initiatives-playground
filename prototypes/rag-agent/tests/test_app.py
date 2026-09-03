@@ -112,7 +112,10 @@ def test_models_endpoint(client):
     response = client.get("/models")
     assert response.status_code == 200
     assert "models" in response.json()
-    assert "gemini" in response.json()["models"]
+    models = response.json()["models"]
+    # Check that expected models are registered
+    assert "gemini-embedding-2" in models
+    assert "gemini-embedding-001" in models
 
 
 def test_storages_endpoint(client):
@@ -120,90 +123,6 @@ def test_storages_endpoint(client):
     assert response.status_code == 200
     assert "storages" in response.json()
     assert "mongodb" in response.json()["storages"]
-
-
-def test_upload_no_file(client):
-    """Test upload endpoint with missing file returns 422 (FastAPI validation)."""
-    response = client.post("/upload")
-    assert response.status_code == 422  # FastAPI validation error
-
-
-def test_upload_empty_filename(client):
-    """Test upload with empty filename returns error."""
-    # FastAPI/Starlette may return 422 for invalid multipart data with empty filename
-    response = client.post(
-        "/upload",
-        files={"file": ("", b"test content", "text/plain")},
-    )
-    # FastAPI may return 422 (validation) or 400 (our custom validation) depending on version
-    assert response.status_code in (400, 422)
-    if response.status_code == 400:
-        assert response.json()["code"] == "VALIDATION_MISSING_FILENAME"
-
-
-def test_upload_invalid_model(client):
-    """Test upload with invalid model returns VALIDATION_INVALID_MODEL."""
-    response = client.post(
-        "/upload",
-        files={"file": ("test.txt", b"test content", "text/plain")},
-        data={"model": "invalid-model"},
-    )
-    assert response.status_code == 400
-    assert response.json()["code"] == "VALIDATION_INVALID_MODEL"
-    assert "available_models" in response.json().get("details", {})
-
-
-@patch("app.process_file")
-@patch("app.get_embedder")
-@patch("app.get_storage")
-def test_upload_success(mock_get_storage, mock_get_embedder, mock_process, client):
-    # Setup mocks
-    mock_doc = MagicMock()
-    mock_doc.content = "test chunk"
-    mock_doc.metadata = {"pages": [1]}
-    mock_process.return_value = [mock_doc]
-
-    mock_embedder = MagicMock()
-    mock_embedder.embed_batched.return_value = [[0.1, 0.2, 0.3]]
-    mock_get_embedder.return_value = mock_embedder
-
-    mock_storage = MagicMock()
-    mock_storage.store_embeddings.return_value = 1
-    mock_get_storage.return_value = mock_storage
-
-    # Make request
-    response = client.post(
-        "/upload",
-        files={"file": ("test.txt", b"test content", "text/plain")},
-    )
-
-    assert response.status_code == 200
-    assert "document_id" in response.json()
-    assert response.json()["chunks_stored"] == 1
-
-
-def test_upload_unsupported_file_type(client):
-    """Test upload with unsupported file type returns VALIDATION_UNSUPPORTED_FILE."""
-    with patch("app.process_file") as mock_process:
-        mock_process.side_effect = ValueError("Unsupported file type: .xyz")
-        response = client.post(
-            "/upload",
-            files={"file": ("test.xyz", b"test content", "application/octet-stream")},
-        )
-        assert response.status_code == 400
-        assert response.json()["code"] == "VALIDATION_UNSUPPORTED_FILE"
-
-
-@patch("app.process_file")
-def test_upload_empty_content(mock_process, client):
-    """Test upload with empty content returns VALIDATION_EMPTY_CONTENT."""
-    mock_process.return_value = []  # No documents extracted
-    response = client.post(
-        "/upload",
-        files={"file": ("test.txt", b"", "text/plain")},
-    )
-    assert response.status_code == 400
-    assert response.json()["code"] == "VALIDATION_EMPTY_CONTENT"
 
 
 def test_search_no_query(client):
@@ -373,3 +292,181 @@ def test_api_v1_chat_models(client):
     response = client.get("/api/v1/chat-models")
     assert response.status_code == 200
     assert "models" in response.json()
+
+
+@patch("app.get_storage")
+def test_api_v1_documents_returns_list(mock_get_storage, client):
+    """Test /api/v1/documents returns document list."""
+    mock_storage = MagicMock()
+    mock_storage.list_documents.return_value = [
+        {"document_id": "doc1", "filename": "report.pdf", "chunk_count": 10, "created_at": "2024-01-01T00:00:00"},
+        {"document_id": "doc2", "filename": "notes.txt", "chunk_count": 5, "created_at": "2024-01-02T00:00:00"},
+    ]
+    mock_get_storage.return_value = mock_storage
+
+    response = client.get("/api/v1/documents")
+
+    assert response.status_code == 200
+    assert "documents" in response.json()
+    assert len(response.json()["documents"]) == 2
+    assert response.json()["documents"][0]["filename"] == "report.pdf"
+
+
+@patch("app.get_storage")
+def test_api_v1_documents_empty_list(mock_get_storage, client):
+    """Test /api/v1/documents returns empty list when no documents."""
+    mock_storage = MagicMock()
+    mock_storage.list_documents.return_value = []
+    mock_get_storage.return_value = mock_storage
+
+    response = client.get("/api/v1/documents")
+
+    assert response.status_code == 200
+    assert response.json()["documents"] == []
+
+
+@patch("app.get_embedder")
+@patch("app.get_storage")
+def test_search_with_filename_filter(mock_get_storage, mock_get_embedder, client):
+    """Test search with filenames filter passes filter to storage."""
+    mock_embedder = MagicMock()
+    mock_embedder.embed_query.return_value = [0.1, 0.2, 0.3]
+    mock_get_embedder.return_value = mock_embedder
+
+    mock_storage = MagicMock()
+    mock_storage.vector_search.return_value = [
+        {"text": "filtered result", "score": 0.95, "filename": "report.pdf"}
+    ]
+    mock_get_storage.return_value = mock_storage
+
+    response = client.post("/search", json={
+        "query": "test query",
+        "filenames": ["report.pdf", "notes.txt"]
+    })
+
+    assert response.status_code == 200
+    # Verify filenames were passed to vector_search
+    mock_storage.vector_search.assert_called_once()
+    call_kwargs = mock_storage.vector_search.call_args
+    assert call_kwargs[1]["filenames"] == ["report.pdf", "notes.txt"]
+
+
+@patch("app.get_embedder")
+@patch("app.get_storage")
+def test_search_without_filename_filter(mock_get_storage, mock_get_embedder, client):
+    """Test search without filenames filter passes None to storage."""
+    mock_embedder = MagicMock()
+    mock_embedder.embed_query.return_value = [0.1, 0.2, 0.3]
+    mock_get_embedder.return_value = mock_embedder
+
+    mock_storage = MagicMock()
+    mock_storage.vector_search.return_value = [
+        {"text": "all results", "score": 0.95}
+    ]
+    mock_get_storage.return_value = mock_storage
+
+    response = client.post("/search", json={"query": "test query"})
+
+    assert response.status_code == 200
+    # Verify filenames is None when not provided
+    mock_storage.vector_search.assert_called_once()
+    call_kwargs = mock_storage.vector_search.call_args
+    assert call_kwargs[1]["filenames"] is None
+
+
+@patch("app.get_storage")
+def test_delete_document_success(mock_get_storage, client):
+    """Test DELETE /api/v1/documents/{id} returns deleted count."""
+    mock_storage = MagicMock()
+    mock_storage.delete_document.return_value = 10
+    mock_get_storage.return_value = mock_storage
+
+    response = client.delete("/api/v1/documents/doc-123")
+
+    assert response.status_code == 200
+    assert response.json()["document_id"] == "doc-123"
+    assert response.json()["deleted_chunks"] == 10
+    mock_storage.delete_document.assert_called_once_with("doc-123")
+
+
+@patch("app.get_storage")
+def test_delete_document_not_found(mock_get_storage, client):
+    """Test DELETE non-existent document returns 404."""
+    mock_storage = MagicMock()
+    mock_storage.delete_document.return_value = 0
+    mock_get_storage.return_value = mock_storage
+
+    response = client.delete("/api/v1/documents/nonexistent-doc")
+
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
+
+@patch("app.get_storage")
+def test_api_v1_document_models(mock_get_storage, client):
+    """Test /api/v1/document-models returns unique models."""
+    mock_storage = MagicMock()
+    mock_storage.list_unique_models.return_value = ["gemini-embedding-2", "gemini-embedding-001"]
+    mock_get_storage.return_value = mock_storage
+
+    response = client.get("/api/v1/document-models")
+
+    assert response.status_code == 200
+    assert "models" in response.json()
+    assert response.json()["models"] == ["gemini-embedding-2", "gemini-embedding-001"]
+
+
+@patch("app.get_storage")
+def test_api_v1_documents_with_model_filter(mock_get_storage, client):
+    """Test /api/v1/documents with model filter."""
+    mock_storage = MagicMock()
+    mock_storage.list_documents.return_value = [
+        {"document_id": "doc1", "filename": "report.pdf", "model": "gemini-embedding-2", "chunk_count": 10},
+    ]
+    mock_get_storage.return_value = mock_storage
+
+    response = client.get("/api/v1/documents?model=gemini-embedding-2")
+
+    assert response.status_code == 200
+    mock_storage.list_documents.assert_called_once_with("gemini-embedding-2")
+
+
+@patch("app.get_storage")
+def test_api_v1_documents_includes_model_field(mock_get_storage, client):
+    """Test /api/v1/documents returns model field."""
+    mock_storage = MagicMock()
+    mock_storage.list_documents.return_value = [
+        {"document_id": "doc1", "filename": "report.pdf", "model": "gemini-embedding-2", "chunk_count": 10},
+    ]
+    mock_get_storage.return_value = mock_storage
+
+    response = client.get("/api/v1/documents")
+
+    assert response.status_code == 200
+    assert response.json()["documents"][0]["model"] == "gemini-embedding-2"
+
+
+@patch("app.get_embedder")
+@patch("app.get_storage")
+def test_search_with_filter_model(mock_get_storage, mock_get_embedder, client):
+    """Test search with filter_model passes filter to storage."""
+    mock_embedder = MagicMock()
+    mock_embedder.embed_query.return_value = [0.1, 0.2, 0.3]
+    mock_get_embedder.return_value = mock_embedder
+
+    mock_storage = MagicMock()
+    mock_storage.vector_search.return_value = [
+        {"text": "result", "score": 0.95, "model": "gemini-embedding-2"}
+    ]
+    mock_get_storage.return_value = mock_storage
+
+    response = client.post("/search", json={
+        "query": "test query",
+        "filter_model": "gemini-embedding-2"
+    })
+
+    assert response.status_code == 200
+    # Verify filter_model was passed to vector_search
+    mock_storage.vector_search.assert_called_once()
+    call_kwargs = mock_storage.vector_search.call_args
+    assert call_kwargs[1]["model"] == "gemini-embedding-2"

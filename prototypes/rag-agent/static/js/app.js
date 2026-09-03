@@ -2,10 +2,11 @@
  * Main application entry point
  */
 
-import { API } from './api.js?v=2';
-import { initUpload } from './components/upload.js?v=2';
-import { initSearch } from './components/search.js';
-import { initChat } from './components/chat.js';
+import { API } from './api.js?v=3';
+import { initUpload } from './components/upload.js?v=3';
+import { initDocuments } from './components/documents.js?v=3';
+import { initSearch } from './components/search.js?v=3';
+import { initChat } from './components/chat.js?v=3';
 
 /**
  * Initialize the application
@@ -48,6 +49,7 @@ async function init() {
 
     // Initialize tab components
     initUpload();
+    initDocuments();
     initSearch();
     initChat();
 

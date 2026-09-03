@@ -292,6 +292,15 @@ pre code {
     font-size: 0.9rem;
 }
 
+/* File filter multi-select */
+#searchFiles {
+    min-height: 80px;
+}
+
+#searchFiles option {
+    padding: 0.25rem 0.5rem;
+}
+
 /* Loading states */
 .btn .spinner-border {
     width: 1rem;
@@ -370,6 +379,80 @@ footer a:hover {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #404040;
+}
+
+/* Tables - Dark theme */
+.table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text-primary);
+    --bs-table-border-color: var(--border-color);
+    --bs-table-striped-bg: var(--bg-tertiary);
+    --bs-table-hover-bg: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.table-responsive {
+    background-color: transparent;
+}
+
+.table > thead {
+    background-color: var(--bg-secondary);
+}
+
+.table > tbody {
+    background-color: transparent;
+}
+
+/* Documents table */
+.documents-table {
+    margin-bottom: 0;
+}
+
+.documents-table th {
+    border-top: none;
+    border-bottom-color: var(--border-color);
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.875rem;
+    background-color: var(--bg-secondary);
+}
+
+.documents-table td {
+    vertical-align: middle;
+    border-color: var(--border-color);
+    background-color: transparent;
+}
+
+.documents-table tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+.documents-table tbody tr:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.documents-table .doc-filename {
+    font-weight: 500;
+}
+
+.documents-table .delete-doc-btn {
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+}
+
+.documents-table tbody tr:hover .delete-doc-btn {
+    opacity: 1;
+}
+
+.documents-table .delete-doc-btn:hover {
+    background-color: var(--error-color);
+    border-color: var(--error-color);
+    color: white;
+}
+
+/* Model badge in documents table */
+.documents-table .badge {
+    font-weight: 400;
 }
 
 /* Responsive adjustments */

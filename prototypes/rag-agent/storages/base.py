@@ -42,15 +42,52 @@ class BaseStorage(ABC):
         self,
         query_embedding: list[float],
         limit: int = 5,
+        filenames: list[str] | None = None,
+        model: str | None = None,
     ) -> list[dict[str, Any]]:
         """Search for similar documents using vector similarity.
 
         Args:
             query_embedding: The query vector to search with.
             limit: Maximum number of results to return.
+            filenames: Optional list of filenames to filter results.
+            model: Optional embedding model name to filter results.
 
         Returns:
             List of matching documents with scores.
+        """
+        pass
+
+    @abstractmethod
+    def list_documents(self, model: str | None = None) -> list[dict[str, Any]]:
+        """List all unique documents in storage.
+
+        Args:
+            model: Optional embedding model name to filter results.
+
+        Returns:
+            List of documents with filename, document_id, chunk_count, model, created_at.
+        """
+        pass
+
+    @abstractmethod
+    def list_unique_models(self) -> list[str]:
+        """List all unique embedding models used in storage.
+
+        Returns:
+            List of unique model names.
+        """
+        pass
+
+    @abstractmethod
+    def delete_document(self, document_id: str) -> int:
+        """Delete all chunks for a document.
+
+        Args:
+            document_id: The unique identifier of the document to delete.
+
+        Returns:
+            Number of chunks deleted.
         """
         pass
 

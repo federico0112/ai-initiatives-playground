@@ -169,33 +169,51 @@ class MongoDBStorage(BaseStorage):
         self,
         query_embedding: list[float],
         limit: int = 5,
+        filenames: list[str] | None = None,
+        model: str | None = None,
     ) -> list[dict[str, Any]]:
         """Search for similar documents using MongoDB Atlas Vector Search.
 
         Args:
             query_embedding: The query vector to search with.
             limit: Maximum number of results to return.
+            filenames: Optional list of filenames to filter results.
+            model: Optional embedding model name to filter results.
 
         Returns:
             List of matching documents with scores.
         """
         logger.info(
-            "Vector search: limit=%d, index=%s, embedding_dim=%d",
+            "Vector search: limit=%d, index=%s, embedding_dim=%d, filenames=%s, model=%s",
             limit,
             self._index_name,
             len(query_embedding),
+            filenames,
+            model,
         )
 
+        vector_search_stage = {
+            "$vectorSearch": {
+                "index": self._index_name,
+                "path": "embedding",
+                "queryVector": query_embedding,
+                "numCandidates": limit * 10,
+                "limit": limit,
+            }
+        }
+
+        # Build filter conditions
+        filter_conditions = {}
+        if filenames:
+            filter_conditions["filename"] = {"$in": filenames}
+        if model:
+            filter_conditions["model"] = model
+
+        if filter_conditions:
+            vector_search_stage["$vectorSearch"]["filter"] = filter_conditions
+
         pipeline = [
-            {
-                "$vectorSearch": {
-                    "index": self._index_name,
-                    "path": "embedding",
-                    "queryVector": query_embedding,
-                    "numCandidates": limit * 10,
-                    "limit": limit,
-                }
-            },
+            vector_search_stage,
             {
                 "$project": {
                     "_id": 0,
@@ -260,3 +278,157 @@ class MongoDBStorage(BaseStorage):
                 "database": self._db_name,
                 "error": str(e),
             }
+
+    def list_documents(self, model: str | None = None) -> list[dict[str, Any]]:
+        """List all unique documents in storage.
+
+        Args:
+            model: Optional embedding model name to filter results.
+
+        Returns:
+            List of documents with filename, document_id, chunk_count, model, created_at.
+        """
+        logger.info("Listing documents from MongoDB (model=%s)", model)
+
+        pipeline = []
+
+        # Add match stage if model filter is provided
+        if model:
+            pipeline.append({"$match": {"model": model}})
+
+        pipeline.extend([
+            {
+                "$group": {
+                    "_id": {
+                        "document_id": "$document_id",
+                        "filename": "$filename",
+                        "model": "$model",
+                    },
+                    "chunk_count": {"$sum": 1},
+                    "created_at": {"$min": "$created_at"},
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "document_id": "$_id.document_id",
+                    "filename": "$_id.filename",
+                    "model": "$_id.model",
+                    "chunk_count": 1,
+                    "created_at": 1,
+                }
+            },
+            {"$sort": {"created_at": -1}},
+        ])
+
+        try:
+            results = list(self._collection.aggregate(pipeline))
+            logger.info("Listed %d documents", len(results))
+            return results
+        except ConnectionFailure as e:
+            logger.error("MongoDB connection failed: %s", str(e))
+            raise StorageError(
+                message="MongoDB connection failed",
+                code=ErrorCode.STORAGE_CONNECTION,
+                details={"database": self._db_name},
+                retryable=True,
+            ) from e
+        except ServerSelectionTimeoutError as e:
+            logger.error("MongoDB server selection timeout: %s", str(e))
+            raise StorageError(
+                message="MongoDB server selection timeout",
+                code=ErrorCode.STORAGE_TIMEOUT,
+                details={"database": self._db_name},
+                retryable=True,
+            ) from e
+        except PyMongoError as e:
+            logger.error("MongoDB error: %s", str(e))
+            raise StorageError(
+                message=f"MongoDB error: {str(e)}",
+                code=ErrorCode.STORAGE_ERROR,
+                details={"database": self._db_name},
+                retryable=False,
+            ) from e
+
+    def list_unique_models(self) -> list[str]:
+        """List all unique embedding models used in storage.
+
+        Returns:
+            List of unique model names.
+        """
+        logger.info("Listing unique models from MongoDB")
+
+        try:
+            results = self._collection.distinct("model")
+            # Filter out None values and sort
+            models = sorted([m for m in results if m is not None])
+            logger.info("Found %d unique models: %s", len(models), models)
+            return models
+        except ConnectionFailure as e:
+            logger.error("MongoDB connection failed: %s", str(e))
+            raise StorageError(
+                message="MongoDB connection failed",
+                code=ErrorCode.STORAGE_CONNECTION,
+                details={"database": self._db_name},
+                retryable=True,
+            ) from e
+        except ServerSelectionTimeoutError as e:
+            logger.error("MongoDB server selection timeout: %s", str(e))
+            raise StorageError(
+                message="MongoDB server selection timeout",
+                code=ErrorCode.STORAGE_TIMEOUT,
+                details={"database": self._db_name},
+                retryable=True,
+            ) from e
+        except PyMongoError as e:
+            logger.error("MongoDB error: %s", str(e))
+            raise StorageError(
+                message=f"MongoDB error: {str(e)}",
+                code=ErrorCode.STORAGE_ERROR,
+                details={"database": self._db_name},
+                retryable=False,
+            ) from e
+
+    def delete_document(self, document_id: str) -> int:
+        """Delete all chunks for a document.
+
+        Args:
+            document_id: The unique identifier of the document to delete.
+
+        Returns:
+            Number of chunks deleted.
+        """
+        logger.info("Deleting document: %s", document_id)
+
+        try:
+            result = self._collection.delete_many({"document_id": document_id})
+            logger.info(
+                "Deleted %d chunks for document %s",
+                result.deleted_count,
+                document_id,
+            )
+            return result.deleted_count
+        except ConnectionFailure as e:
+            logger.error("MongoDB connection failed: %s", str(e))
+            raise StorageError(
+                message="MongoDB connection failed",
+                code=ErrorCode.STORAGE_CONNECTION,
+                details={"database": self._db_name},
+                retryable=True,
+            ) from e
+        except ServerSelectionTimeoutError as e:
+            logger.error("MongoDB server selection timeout: %s", str(e))
+            raise StorageError(
+                message="MongoDB server selection timeout",
+                code=ErrorCode.STORAGE_TIMEOUT,
+                details={"database": self._db_name},
+                retryable=True,
+            ) from e
+        except PyMongoError as e:
+            logger.error("MongoDB error: %s", str(e))
+            raise StorageError(
+                message=f"MongoDB error: {str(e)}",
+                code=ErrorCode.STORAGE_ERROR,
+                details={"database": self._db_name},
+                retryable=False,
+            ) from e

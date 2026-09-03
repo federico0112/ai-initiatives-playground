@@ -7,6 +7,9 @@ import { API } from '../api.js';
 let sessionId = null;
 let messages = [];
 let isStreaming = false;
+let embedderSelect = null;
+let fileSelect = null;
+let refreshFilesBtn = null;
 
 /**
  * Initialize chat tab
@@ -21,10 +24,26 @@ export function initChat() {
     const topKSlider = document.getElementById('chatTopK');
     const topKValue = document.getElementById('chatTopKValue');
     const modelSelect = document.getElementById('chatModel');
+    embedderSelect = document.getElementById('chatEmbedder');
+    fileSelect = document.getElementById('chatFiles');
+    refreshFilesBtn = document.getElementById('refreshChatFilesBtn');
     const errorDiv = document.getElementById('chatError');
 
-    // Load available chat models
+    // Load available chat models and embedding models
     loadChatModels(modelSelect);
+    loadEmbedders(embedderSelect).then(() => {
+        loadFilesForEmbedder();
+    });
+
+    // Reload files when embedder changes
+    embedderSelect.addEventListener('change', () => {
+        loadFilesForEmbedder();
+    });
+
+    // Refresh files button
+    refreshFilesBtn.addEventListener('click', () => {
+        loadFilesForEmbedder();
+    });
 
     // Update top-k display when slider changes
     topKSlider.addEventListener('input', () => {
@@ -34,6 +53,12 @@ export function initChat() {
     // Handle new session button
     newSessionBtn.addEventListener('click', () => {
         createNewSession(messagesContainer, sessionIdDisplay);
+    });
+
+    // Reload files when tab is shown
+    const chatTab = document.getElementById('chat-tab');
+    chatTab.addEventListener('shown.bs.tab', () => {
+        loadFilesForEmbedder();
     });
 
     // Handle form submission
@@ -56,6 +81,9 @@ export function initChat() {
         try {
             const topK = parseInt(topKSlider.value, 10);
             const model = modelSelect.value;
+            const embedder = embedderSelect.value;
+            const selectedFiles = Array.from(fileSelect.selectedOptions).map(opt => opt.value);
+            const filenames = selectedFiles.length > 0 ? selectedFiles : null;
 
             // Add user message to UI
             addMessage(messagesContainer, 'user', message);
@@ -67,7 +95,7 @@ export function initChat() {
             let fullResponse = '';
 
             // Stream the response
-            for await (const event of API.chatStream(message, sessionId, topK, model)) {
+            for await (const event of API.chatStream(message, sessionId, topK, model, embedder, filenames)) {
                 switch (event.type) {
                     case 'metadata':
                         sessionId = event.session_id;
@@ -121,6 +149,52 @@ async function loadChatModels(selectElement) {
             .join('');
     } catch (error) {
         console.error('Failed to load chat models:', error);
+    }
+}
+
+/**
+ * Load available embedding models into select
+ */
+async function loadEmbedders(selectElement) {
+    try {
+        const { models } = await API.getModels();
+        if (models && models.length > 0) {
+            selectElement.innerHTML = models
+                .map(model => `<option value="${model}">${model}</option>`)
+                .join('');
+        }
+        return true;
+    } catch (error) {
+        console.error('Failed to load embedding models:', error);
+        return false;
+    }
+}
+
+/**
+ * Load files filtered by the selected embedding model
+ */
+async function loadFilesForEmbedder() {
+    const embedder = embedderSelect?.value;
+    if (!embedder) {
+        fileSelect.innerHTML = '<option value="" disabled>Select an embedder first</option>';
+        return;
+    }
+    setLoading(refreshFilesBtn, true);
+
+    try {
+        const { documents } = await API.getDocuments(embedder);
+        if (documents.length === 0) {
+            fileSelect.innerHTML = `<option value="" disabled>No files embedded with ${embedder}</option>`;
+            return;
+        }
+        fileSelect.innerHTML = documents
+            .map(doc => `<option value="${doc.filename}">${doc.filename} (${doc.chunk_count} chunks)</option>`)
+            .join('');
+    } catch (error) {
+        console.error('Failed to load files:', error);
+        fileSelect.innerHTML = '<option value="" disabled>Failed to load files</option>';
+    } finally {
+        setLoading(refreshFilesBtn, false);
     }
 }
 

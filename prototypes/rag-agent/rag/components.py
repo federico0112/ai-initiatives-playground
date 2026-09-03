@@ -51,14 +51,26 @@ class QueryEmbedder:
 class MongoDBRetriever:
     """Haystack component that retrieves documents from MongoDB using vector search."""
 
-    def __init__(self, top_k: int = 5):
+    def __init__(
+        self,
+        top_k: int = 5,
+        filenames: list[str] | None = None,
+        model: str | None = None,
+    ):
         """Initialize the retriever.
 
         Args:
             top_k: Default number of documents to retrieve.
+            filenames: Optional list of filenames to filter by.
+            model: Optional embedding model to filter by.
         """
         self.top_k = top_k
-        logger.info("MongoDBRetriever initialized: top_k=%d", top_k)
+        self.filenames = filenames
+        self.model = model
+        logger.info(
+            "MongoDBRetriever initialized: top_k=%d, filenames=%s, model=%s",
+            top_k, filenames, model,
+        )
 
     @component.output_types(documents=list[Document])
     def run(
@@ -77,9 +89,11 @@ class MongoDBRetriever:
         """
         k = top_k if top_k is not None else self.top_k
         logger.info(
-            "Retrieving documents: embedding_dim=%d, top_k=%d",
+            "Retrieving documents: embedding_dim=%d, top_k=%d, filenames=%s, model=%s",
             len(embedding),
             k,
+            self.filenames,
+            self.model,
         )
 
         # Search storage
@@ -87,6 +101,8 @@ class MongoDBRetriever:
         results = storage.vector_search(
             query_embedding=embedding,
             limit=k,
+            filenames=self.filenames,
+            model=self.model,
         )
         logger.info("Retrieved %d documents", len(results))
 

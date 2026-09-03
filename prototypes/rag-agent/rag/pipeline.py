@@ -54,7 +54,7 @@ def init_haystack_tracing() -> None:
     logger.info("Haystack tracing enabled with content tracing")
 
 DEFAULT_MODEL = "gemini-2.5-flash"
-SUPPORTED_MODELS = {"gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"}
+SUPPORTED_MODELS = {"gemini-2.5-flash", "gemini-2.5-pro", "gemini-3.8-flash"}
 
 SYSTEM_PROMPT = """You are a helpful assistant that answers questions based on the provided documents.
 Use the document context to answer the user's question accurately and concisely.
@@ -81,7 +81,11 @@ No relevant documents were found.
 Please answer based on the documents above."""
 
 
-def build_retrieval_pipeline(top_k: int = 5, embedder_name: str = "gemini") -> Pipeline:
+def build_retrieval_pipeline(
+    top_k: int = 5,
+    embedder_name: str = "gemini-embedding-2",
+    filenames: list[str] | None = None,
+) -> Pipeline:
     """Build a pipeline for document retrieval and prompt building.
 
     Pipeline architecture:
@@ -90,14 +94,18 @@ def build_retrieval_pipeline(top_k: int = 5, embedder_name: str = "gemini") -> P
     Args:
         top_k: Number of documents to retrieve.
         embedder_name: Name of the embedder to use.
+        filenames: Optional list of filenames to filter by.
 
     Returns:
         Configured Haystack Pipeline for retrieval.
     """
-    logger.info("Building retrieval pipeline: top_k=%d, embedder=%s", top_k, embedder_name)
+    logger.info(
+        "Building retrieval pipeline: top_k=%d, embedder=%s, filenames=%s",
+        top_k, embedder_name, filenames,
+    )
 
     query_embedder = QueryEmbedder(embedder_name=embedder_name)
-    retriever = MongoDBRetriever(top_k=top_k)
+    retriever = MongoDBRetriever(top_k=top_k, filenames=filenames, model=embedder_name)
 
     prompt_builder = ChatPromptBuilder(
         template=[
@@ -125,14 +133,18 @@ def run_rag_query(
     chat_history: list[dict[str, str]] | None = None,
     model: str = DEFAULT_MODEL,
     top_k: int = 5,
+    embedder: str = "gemini-embedding-2",
+    filenames: list[str] | None = None,
 ) -> Generator[dict[str, Any], None, None]:
     """Run a RAG query using the pipeline and yield streaming responses.
 
     Args:
         query: The user's question.
         chat_history: Optional list of previous messages.
-        model: The Gemini model to use.
+        model: The Gemini chat model to use.
         top_k: Number of documents to retrieve.
+        embedder: The embedding model to use for query embedding.
+        filenames: Optional list of filenames to filter documents.
 
     Yields:
         Dict events with 'type' and associated data.
@@ -141,10 +153,12 @@ def run_rag_query(
     init_haystack_tracing()
 
     logger.info(
-        "Running RAG query: query=%r, model=%s, top_k=%d, history_len=%d",
+        "Running RAG query: query=%r, model=%s, top_k=%d, embedder=%s, filenames=%s, history_len=%d",
         query[:50] + "..." if len(query) > 50 else query,
         model,
         top_k,
+        embedder,
+        filenames,
         len(chat_history) if chat_history else 0,
     )
 
@@ -154,7 +168,11 @@ def run_rag_query(
 
     # Step 1: Run retrieval pipeline to get documents and build prompt
     logger.debug("Step 1: Building and running retrieval pipeline")
-    retrieval_pipeline = build_retrieval_pipeline(top_k=top_k)
+    retrieval_pipeline = build_retrieval_pipeline(
+        top_k=top_k,
+        embedder_name=embedder,
+        filenames=filenames,
+    )
 
     pipeline_input = {
         "query_embedder": {"query": query},

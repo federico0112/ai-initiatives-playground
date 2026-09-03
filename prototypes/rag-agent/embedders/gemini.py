@@ -21,15 +21,14 @@ RETRYABLE_EXCEPTIONS = (
 )
 
 
-@register_embedder("gemini")
-class GeminiEmbedder(BaseEmbedder):
-    """Embedder using Google's Gemini embedding model."""
+class GeminiEmbedderBase(BaseEmbedder):
+    """Base class for Gemini embedders with shared API logic."""
 
-    MODEL_NAME = "gemini-embedding-001"
-    DIMENSION = 768
+    MODEL_NAME: str  # Override in subclass
+    DIMENSION: int = 768
 
     def __init__(self):
-        logger.debug("Initializing GeminiEmbedder")
+        logger.debug("Initializing %s", self.__class__.__name__)
 
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
@@ -39,7 +38,8 @@ class GeminiEmbedder(BaseEmbedder):
         logger.debug("Configuring Gemini API client")
         self.client = genai.Client(api_key=api_key)
         logger.info(
-            "GeminiEmbedder initialized: model=%s, dimension=%d",
+            "%s initialized: model=%s, dimension=%d",
+            self.__class__.__name__,
             self.MODEL_NAME,
             self.DIMENSION,
         )
@@ -50,9 +50,13 @@ class GeminiEmbedder(BaseEmbedder):
     ) -> list[list[float]]:
         """Call the Gemini embedding API with retry logic."""
         try:
+            # Each text must be wrapped as a Content object for batch embedding
+            contents = [
+                types.Content(parts=[types.Part(text=t)]) for t in texts
+            ]
             result = self.client.models.embed_content(
                 model=self.MODEL_NAME,
-                contents=texts,
+                contents=contents,
                 config=types.EmbedContentConfig(
                     task_type=task_type,
                     output_dimensionality=self.DIMENSION,
@@ -94,7 +98,7 @@ class GeminiEmbedder(BaseEmbedder):
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         """Embed texts using Gemini embedding model."""
-        logger.info("Embedding %d texts with Gemini", len(texts))
+        logger.info("Embedding %d texts with %s", len(texts), self.MODEL_NAME)
         logger.debug(
             "Text lengths: %s",
             [len(t) for t in texts],
@@ -123,7 +127,7 @@ class GeminiEmbedder(BaseEmbedder):
 
     def embed_query(self, query: str) -> list[float]:
         """Embed a query string for retrieval."""
-        logger.info("Embedding query with Gemini")
+        logger.info("Embedding query with %s", self.MODEL_NAME)
         logger.debug("Query length: %d", len(query))
 
         embeddings = self._call_embed_api([query], "RETRIEVAL_QUERY")
@@ -151,3 +155,17 @@ class GeminiEmbedder(BaseEmbedder):
                 "model": self.MODEL_NAME,
                 "error": str(e),
             }
+
+
+@register_embedder("gemini-embedding-2")
+class GeminiEmbedding2(GeminiEmbedderBase):
+    """Gemini Embedding 2 - multimodal embedding model (recommended)."""
+
+    MODEL_NAME = "gemini-embedding-2"
+
+
+@register_embedder("gemini-embedding-001")
+class GeminiEmbedding001(GeminiEmbedderBase):
+    """Gemini Embedding 001 - text-only embedding model."""
+
+    MODEL_NAME = "gemini-embedding-001"

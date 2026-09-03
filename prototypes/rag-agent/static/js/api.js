@@ -53,23 +53,6 @@ export const API = {
     },
 
     /**
-     * Upload a file for embedding
-     * @param {File} file - The file to upload
-     * @param {string} model - The embedding model to use
-     * @returns {Promise<{document_id: string, chunks_stored: number}>}
-     */
-    async upload(file, model = 'gemini') {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('model', model);
-
-        return fetchJSON(`${API_BASE}/upload`, {
-            method: 'POST',
-            body: formData,
-        });
-    },
-
-    /**
      * Get a signed URL for direct upload to GCS
      * @param {string} filename - The file name
      * @param {string} contentType - The file MIME type
@@ -122,7 +105,7 @@ export const API = {
      * @param {string} model - The embedding model to use
      * @returns {Promise<{document_id: string, chunks_stored: number}>}
      */
-    async embedFromGCS(gcsPath, model = 'gemini') {
+    async embedFromGCS(gcsPath, model = 'gemini-embedding-2') {
         return fetchJSON(`${API_BASE}/embed-from-gcs`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -131,17 +114,57 @@ export const API = {
     },
 
     /**
+     * Get list of uploaded documents
+     * @param {string|null} model - Optional model to filter by
+     * @returns {Promise<{documents: Array}>}
+     */
+    async getDocuments(model = null) {
+        const url = model
+            ? `${API_BASE}/documents?model=${encodeURIComponent(model)}`
+            : `${API_BASE}/documents`;
+        return fetchJSON(url);
+    },
+
+    /**
+     * Get list of unique embedding models used in stored documents
+     * @returns {Promise<{models: Array}>}
+     */
+    async getDocumentModels() {
+        return fetchJSON(`${API_BASE}/document-models`);
+    },
+
+    /**
+     * Delete a document and all its chunks
+     * @param {string} documentId - The document ID to delete
+     * @returns {Promise<{document_id: string, deleted_chunks: number}>}
+     */
+    async deleteDocument(documentId) {
+        return fetchJSON(`${API_BASE}/documents/${documentId}`, {
+            method: 'DELETE',
+        });
+    },
+
+    /**
      * Search for similar documents
      * @param {string} query - The search query
      * @param {number} limit - Maximum results to return
-     * @param {string} model - The embedding model to use
+     * @param {string} model - The embedding model to use for query
+     * @param {Array<string>|null} filenames - Optional filenames to filter by
+     * @param {string|null} filterModel - Optional model to filter results by
      * @returns {Promise<{query: string, results: Array}>}
      */
-    async search(query, limit = 5, model = 'gemini') {
+    async search(query, limit = 5, model = 'gemini-embedding-2', filenames = null, filterModel = null) {
+        const body = { query, limit, model };
+        if (filenames && filenames.length > 0) {
+            body.filenames = filenames;
+        }
+        if (filterModel) {
+            body.filter_model = filterModel;
+        }
         return fetchJSON(`${API_BASE}/search`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, limit, model }),
+            body: JSON.stringify(body),
         });
     },
 
@@ -151,18 +174,25 @@ export const API = {
      * @param {string|null} sessionId - Optional session ID
      * @param {number} topK - Number of documents to retrieve
      * @param {string} model - The chat model to use
+     * @param {string} embedder - The embedding model to use
+     * @param {Array<string>|null} filenames - Optional filenames to filter by
      * @yields {Object} NDJSON events: metadata, sources, chunk, done, error
      */
-    async *chatStream(message, sessionId = null, topK = 5, model = 'gemini-2.5-flash') {
+    async *chatStream(message, sessionId = null, topK = 5, model = 'gemini-2.5-flash', embedder = 'gemini-embedding-2', filenames = null) {
+        const body = {
+            message,
+            session_id: sessionId,
+            top_k: topK,
+            model,
+            embedder,
+        };
+        if (filenames && filenames.length > 0) {
+            body.filenames = filenames;
+        }
         const response = await fetch(`${API_BASE}/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message,
-                session_id: sessionId,
-                top_k: topK,
-                model,
-            }),
+            body: JSON.stringify(body),
         });
 
         if (!response.ok) {
