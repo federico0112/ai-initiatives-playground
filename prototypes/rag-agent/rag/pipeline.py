@@ -4,6 +4,7 @@ import logging
 import os
 from typing import Any, Generator
 
+from deepeval.tracing import observe, update_current_span, update_current_trace
 from haystack import Pipeline, tracing
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage, StreamingChunk
@@ -128,6 +129,76 @@ def build_retrieval_pipeline(
     logger.info("Retrieval pipeline built successfully")
     return pipeline
 
+@observe(type="retriever")
+def _run_retrieval(
+    query: str,
+    top_k: int,
+    embedder_name: str,
+    filenames: list[str] | None,
+) -> dict[str, Any]:
+    """Run the retrieval pipeline as its own traced span."""
+    retrieval_pipeline = build_retrieval_pipeline(
+        top_k=top_k,
+        embedder_name=embedder_name,
+        filenames=filenames,
+    )
+
+    retrieval_result = retrieval_pipeline.run(
+        {
+            "query_embedder": {"query": query},
+            "prompt_builder": {"query": query},
+        },
+        include_outputs_from={"query_embedder", "retriever", "prompt_builder"},
+    )
+
+    documents = retrieval_result.get("retriever", {}).get("documents", [])
+    update_current_span(
+        input=query,
+        output=[doc.content for doc in documents],
+        metadata={
+            "top_k": top_k,
+            "embedder": embedder_name,
+            "filenames": filenames,
+            "retrieved_documents": len(documents),
+        },
+    )
+    return retrieval_result
+
+
+@observe(type="llm")
+def _generate_chat_response(
+    model: str, messages: list[ChatMessage]
+) -> tuple[list[str], dict[str, Any]]:
+    """Run the chat generator as its own traced span, returning streamed chunks."""
+    api_key = os.environ.get("GEMINI_API_KEY")
+
+    chunks_queue: list[str] = []
+
+    def streaming_callback(chunk: StreamingChunk) -> None:
+        if chunk.content:
+            chunks_queue.append(chunk.content)
+
+    generator = GoogleGenAIChatGenerator(
+        api_key=Secret.from_token(api_key),
+        model=model,
+        generation_kwargs={"temperature": 0.7, "max_output_tokens": 2048},
+        streaming_callback=streaming_callback,
+    )
+
+    result = generator.run(messages=messages)
+
+    update_current_span(
+        input=[
+            {"role": msg.role.value if hasattr(msg.role, "value") else str(msg.role), "content": msg.text}
+            for msg in messages
+        ],
+        output=[{"role": "assistant", "content": "".join(chunks_queue)}],
+        metadata={"model": model},
+    )
+    return chunks_queue, result
+
+
+@observe(type="agent")
 def run_rag_query(
     query: str,
     chat_history: list[dict[str, str]] | None = None,
@@ -166,26 +237,25 @@ def run_rag_query(
     if not api_key:
         raise ValueError("GEMINI_API_KEY environment variable is required")
 
+    update_current_trace(
+        input=query,
+        tags=["rag", "chatbot"],
+        metadata={
+            "model": model,
+            "top_k": top_k,
+            "embedder": embedder,
+            "filenames": filenames,
+            "history_len": len(chat_history) if chat_history else 0,
+        },
+    )
+
     # Step 1: Run retrieval pipeline to get documents and build prompt
     logger.debug("Step 1: Building and running retrieval pipeline")
-    retrieval_pipeline = build_retrieval_pipeline(
+    retrieval_result = _run_retrieval(
+        query=query,
         top_k=top_k,
         embedder_name=embedder,
         filenames=filenames,
-    )
-
-    pipeline_input = {
-        "query_embedder": {"query": query},
-        "prompt_builder": {"query": query},
-    }
-    logger.debug("Retrieval pipeline input: %s", {
-        "query_embedder": {"query": query[:100] + "..." if len(query) > 100 else query},
-        "prompt_builder": {"query": query[:100] + "..." if len(query) > 100 else query},
-    })
-
-    retrieval_result = retrieval_pipeline.run(
-        pipeline_input,
-        include_outputs_from={"query_embedder", "retriever", "prompt_builder"},
     )
 
     # Log pipeline outputs
@@ -260,29 +330,7 @@ def run_rag_query(
 
     # Step 4: Run generator with streaming
     logger.debug("Step 4: Running generator with model=%s", model)
-    chunks_queue: list[str] = []
-    chunk_count = 0
-
-    def streaming_callback(chunk: StreamingChunk) -> None:
-        """Callback to collect streaming chunks."""
-        nonlocal chunk_count
-        if chunk.content:
-            chunks_queue.append(chunk.content)
-            chunk_count += 1
-            if chunk_count % 10 == 0:
-                logger.debug("Received %d streaming chunks", chunk_count)
-
-    generator = GoogleGenAIChatGenerator(
-        api_key=Secret.from_token(api_key),
-        model=model,
-        generation_kwargs={"temperature": 0.7, "max_output_tokens": 2048},
-        streaming_callback=streaming_callback,
-    )
-
-    logger.debug("Generator input: %d messages", len(final_messages))
-
-    # Run generator - this populates chunks_queue via callback
-    result = generator.run(messages=final_messages)
+    chunks_queue, result = _generate_chat_response(model=model, messages=final_messages)
 
     logger.debug(
         "Generator output: %d chunks received, result keys=%s",
@@ -314,3 +362,4 @@ def run_rag_query(
         len(chunks_queue),
         total_response_length,
     )
+    update_current_trace(output="".join(chunks_queue))
