@@ -117,6 +117,7 @@ Message → Embed Query → Retrieve Top-K Docs → Build Prompt → Stream LLM 
 | `MONGODB_COLLECTION` | No | Collection name (default: `documents`) |
 | `MONGODB_INDEX_NAME` | No | Vector index name (default: `vector_index`) |
 | `GEMINI_API_KEY` | Yes | Google AI API key |
+| `OPENAI_API_KEY` | No | OpenAI API key (required only when using an `openai-*` embedder) |
 | `GCS_BUCKET` | Yes | GCS bucket for file uploads |
 | `LOG_LEVEL` | No | Logging level (default: `INFO`) |
 
@@ -188,6 +189,10 @@ docker run -p 8080:8080 \
 |-------|-----|-------------|
 | Gemini Embedding 2 | `gemini-embedding-2` | Multimodal (text, image, video, audio, PDF), 768 dims |
 | Gemini Embedding 001 | `gemini-embedding-001` | Text-only, 768 dims |
+| OpenAI text-embedding-3-small | `openai-text-embedding-3-small` | Efficient, low-cost, 1536 dims |
+| OpenAI text-embedding-3-large | `openai-text-embedding-3-large` | Highest quality, 3072 dims |
+
+> Each embedder's vector dimension must match the `numDimensions` of the MongoDB Atlas vector index used to query it (see [MongoDB Atlas Setup](#mongodb-atlas-setup)) — the OpenAI models above need their own 1536- or 3072-dimension index, not the 768-dimension one built for Gemini.
 
 ## Chat Models
 
@@ -212,7 +217,8 @@ rag-agent/
 ├── version.py             # Version info
 ├── embedders/
 │   ├── base.py            # Base embedder & registry
-│   └── gemini.py          # Gemini embedding models
+│   ├── gemini.py          # Gemini embedding models
+│   └── openai.py          # OpenAI embedding models
 ├── storages/
 │   ├── base.py            # Base storage & registry
 │   └── mongodb.py         # MongoDB Atlas storage
