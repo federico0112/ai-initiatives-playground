@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from version import __version__, __git_sha__, get_version_info
 from embedders.base import get_embedder, EMBEDDERS
 from embedders import gemini  # noqa: F401 - registers the embedder
+from embedders import openai  # noqa: F401 - registers the openai embedder
 from services.document import process_file, SUPPORTED_EXTENSIONS
 from storages.base import get_storage, STORAGES
 from storages import mongodb  # noqa: F401 - registers the storage backend
