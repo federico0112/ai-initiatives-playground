@@ -1,0 +1,168 @@
+{
+  "scenario": "base",
+  "thresholds": {
+    "case_open_pct_of_invoiced": "2",
+    "evidence_request_unresolved_pct_of_invoiced": "1",
+    "status": "confirmed by Federico 2026-10-02"
+  },
+  "figures": {
+    "invoiced": "27000.00",
+    "expected": "25000.00",
+    "variance": "2000.00",
+    "variance_pct_of_invoice": "7.41",
+    "variance_pct_of_expected": "8.00",
+    "supported": "1820.00",
+    "explained_carrier_favour": "180.00",
+    "unresolved": "0.00",
+    "undisputed_payable": "25180.00"
+  },
+  "case": {
+    "opens": true,
+    "case_id": "CASE-0001",
+    "correlation_id": "NBCS:NB-INV-2026-09-0412",
+    "severity": "high",
+    "dispute_deadline": "2026-10-19",
+    "payment_due": "2026-11-04"
+  },
+  "step2_data_quality": {
+    "duplicate_cdrs_in_usage": 0,
+    "rejects": {
+      "UNMAPPED_TRUNK": {
+        "count": 4000,
+        "billable_minutes": 12000,
+        "egress_trunk": "TRK-NB-07",
+        "dates": "2026-09-21..2026-09-30",
+        "billable": true,
+        "note": "trunk_map adds TRK-NB-07 only from 2026-10-01"
+      },
+      "DUPLICATE": {
+        "count": 25,
+        "billable": false,
+        "note": "correctly dropped; not an explanation"
+      },
+      "ZERO_DURATION": {
+        "count": 60,
+        "billable": false,
+        "note": "correctly dropped"
+      }
+    },
+    "blocking": false
+  },
+  "step3_exceptions": [
+    {
+      "invoice_line": 1,
+      "destination_group": "MX-MOB",
+      "exception_type": "RATE_BEFORE_EFFECTIVE",
+      "invoiced": "11100.00",
+      "expected": "9280.00",
+      "variance": "1820.00",
+      "detail": "280000 min on 2026-09-01..14 billed at 0.0185; contracted 0.0120"
+    },
+    {
+      "invoice_line": 3,
+      "destination_group": "CO-MOB",
+      "exception_type": "VOLUME",
+      "invoiced": "4680.00",
+      "expected": "4500.00",
+      "variance": "180.00",
+      "detail": "carrier 312000 min vs our 300000 min; +4000 calls"
+    }
+  ],
+  "step3_matches": [
+    "line 2 MX-FIX 2400.00",
+    "line 4 BR-MOB 5250.00",
+    "line 5 GT-MOB 3570.00"
+  ],
+  "step4_causes": [
+    {
+      "group": "MX-MOB",
+      "claim_class": [
+        "fact",
+        "calculation"
+      ],
+      "statement": "Increase noticed 2026-09-07T14:00Z is effective 2026-09-15 under clause 6.3 and the deck row; carrier applied it from 2026-09-01.",
+      "cites": [
+        "sim://invoices/invoice/NB-INV-2026-09-0412/line/1",
+        "sim://rates/deck/NB-VOICE-2026-09-07/row/521",
+        "sim://rates/deck/NB-VOICE-2026-08-01/row/521",
+        "sim://rates/notice/RN-NB-2026-0907",
+        "sim://contracts/agreement/AGR-NB-2025-014#clause-6.3",
+        "sim://usage/daily/2026-09-01/MX-MOB",
+        "sim://usage/daily/2026-09-02/MX-MOB",
+        "sim://usage/daily/2026-09-03/MX-MOB",
+        "sim://usage/daily/2026-09-04/MX-MOB",
+        "sim://usage/daily/2026-09-05/MX-MOB",
+        "sim://usage/daily/2026-09-06/MX-MOB",
+        "sim://usage/daily/2026-09-07/MX-MOB",
+        "sim://usage/daily/2026-09-08/MX-MOB",
+        "sim://usage/daily/2026-09-09/MX-MOB",
+        "sim://usage/daily/2026-09-10/MX-MOB",
+        "sim://usage/daily/2026-09-11/MX-MOB",
+        "sim://usage/daily/2026-09-12/MX-MOB",
+        "sim://usage/daily/2026-09-13/MX-MOB",
+        "sim://usage/daily/2026-09-14/MX-MOB"
+      ]
+    },
+    {
+      "group": "CO-MOB",
+      "claim_class": [
+        "fact"
+      ],
+      "statement": "Mediation rejected 4000 CO-MOB calls / 12000 billable minutes on TRK-NB-07 (UNMAPPED_TRUNK, not reprocessed); the carrier charge is legitimate and our expected is understated.",
+      "cites": [
+        "sim://invoices/invoice/NB-INV-2026-09-0412/line/3",
+        "sim://usage/trunk_map/TRK-NB-07",
+        "sim://usage/reject/REJ-20260921-0296",
+        "sim://usage/reject/REJ-20260921-0026",
+        "sim://usage/reject/REJ-20260921-0398",
+        "... all 4000 UNMAPPED_TRUNK rejects"
+      ]
+    }
+  ],
+  "step5_calcs": [
+    {
+      "name": "supported_mx_mob",
+      "formula": "280000 x (0.0185 - 0.0120)",
+      "result": "1820.00"
+    },
+    {
+      "name": "co_mob_explained",
+      "formula": "12000 x 0.0150",
+      "result": "180.00"
+    },
+    {
+      "name": "undisputed_payable",
+      "formula": "27000.00 - 1820.00",
+      "result": "25180.00"
+    }
+  ],
+  "step6_decision": {
+    "decision": "partial_dispute",
+    "amount": "1820.00",
+    "why": [
+      "supported 1820.00 >= dispute_min_amount 50.00 (clause 8.2)",
+      "unresolved 0.00 <= 1% of invoiced",
+      "CO-MOB 180.00 is our own mediation fault; pay it and fix trunk_map"
+    ],
+    "internal_actions": [
+      "add TRK-NB-07 to trunk_map from 2026-09-21 and reprocess the 4000 rejects"
+    ]
+  },
+  "step7_submission": {
+    "reason_code": "RATE_BEFORE_EFFECTIVE",
+    "product": "Mexico Mobile",
+    "bill_period": "2026-09",
+    "account_id": "NBCS-ACC-30988",
+    "invoice_id": "NB-INV-2026-09-0412",
+    "disputed_amount": "1820.00",
+    "billed_rate": "0.0185",
+    "correct_rate": "0.0120",
+    "from_date": "2026-09-01",
+    "through_date": "2026-09-14"
+  },
+  "must_not": [
+    "dispute the CO-MOB 180.00",
+    "treat DUPLICATE or ZERO_DURATION rejects as billable",
+    "state any amount that is not a rules-actor calc"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "scenario": "v3",
+  "edit": "notice sent 2026-09-12T14:00Z; deck still says 2026-09-15",
+  "rule": "7 days after 2026-09-12T14:00Z = 2026-09-19T14:00Z; first full UTC day = 2026-09-20",
+  "figures": {
+    "invoiced": "27000.00",
+    "expected": "24350.00",
+    "variance": "2650.00",
+    "mx_mob_minutes_0901_0919": 380000,
+    "mx_mob_minutes_0915_0919": 100000,
+    "supported": "2470.00",
+    "explained_carrier_favour": "180.00",
+    "unresolved": "0.00",
+    "undisputed_payable": "24530.00"
+  },
+  "step6_decision": {
+    "decision": "partial_dispute",
+    "amount": "2470.00",
+    "submission": {
+      "reason_code": "RATE_BEFORE_EFFECTIVE",
+      "from_date": "2026-09-01",
+      "through_date": "2026-09-19"
+    }
+  },
+  "note": "V3 rating run already applies the clause 6.3 date, so step 2's effective-date check passes; the deck's stated 09-15 is the carrier's error."
+}

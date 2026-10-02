@@ -1,0 +1,20 @@
+{
+  "scenario": "v1",
+  "edit": "CO-MOB rejects removed",
+  "figures": {
+    "invoiced": "27000.00",
+    "expected": "25000.00",
+    "supported": "1820.00",
+    "unresolved": "180.00",
+    "unresolved_pct_of_invoice": "0.67",
+    "undisputed_payable": "25180.00"
+  },
+  "step6_decision": {
+    "decision": "partial_dispute",
+    "amount": "1820.00",
+    "why": [
+      "unresolved 180.00 = 0.67% of invoiced, below the 1% evidence threshold",
+      "180.00 recorded as unresolved, not disputed and not explained"
+    ]
+  }
+}

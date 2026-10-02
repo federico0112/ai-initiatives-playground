@@ -1,0 +1,30 @@
+id: v2
+sim_start: 2026-10-05T09:00:00Z
+data_root: sim-data/v2
+inherits: sim-data/base
+events:
+  - at: 2026-10-05T09:00:00Z
+    action: deliver_invoice
+    invoice_id: NB-INV-2026-09-0412
+  - on: evidence_request
+    match: {to: carrier, item: cdr_detail, destination_group: CO-MOB}
+    after: P3D
+    action: deliver_file
+    from: staged/invoices/inbox/NB-INV-2026-09-0412/cdr_detail.csv.gz
+    path: invoices/inbox/NB-INV-2026-09-0412/cdr_detail.csv.gz
+  - on: portal_submit
+    after: P2D
+    action: portal_response
+    response: {status: acknowledged}
+  - on: portal_submit
+    after: P6D
+    action: portal_response
+    response: {status: resolved, outcome: customer_favour, credit_amount: "2240.00"}
+expected:
+  case_opened: true
+  supported: "1820.00"
+  unresolved: "600.00"
+  decision: "request_evidence"
+  supported_after_evidence: "2240.00"
+  unresolved_after_evidence: "0.00"
+  decision_after_evidence: "partial_dispute"

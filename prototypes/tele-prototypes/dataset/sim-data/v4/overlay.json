@@ -1,0 +1,7 @@
+{
+  "inherits": "sim-data/base",
+  "deleted": [
+    "rates/decks/NB-VOICE-2026-09-07.csv"
+  ],
+  "note": "deck file removed; history and notice still reference it"
+}

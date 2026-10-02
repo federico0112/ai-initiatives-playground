@@ -1,0 +1,135 @@
+{
+  "agreement_id": "AGR-NB-2025-014",
+  "document_number": "NBCS-WVT-2025-0117",
+  "name": "Wholesale Voice Termination Agreement",
+  "agreement_type": "wholesale_voice",
+  "status": "active",
+  "version": 2,
+  "period_start": "2025-03-01",
+  "period_end": null,
+  "buyer_party": {
+    "party_id": "ORX",
+    "name": "Orion Voice Exchange",
+    "role": "buyer"
+  },
+  "seller_party": {
+    "party_id": "NBCS",
+    "name": "Northbridge Carrier Services",
+    "role": "seller"
+  },
+  "currency": "USD",
+  "billing_cycle": "monthly",
+  "billing_timezone": "UTC",
+  "billing_increment": "60/60",
+  "rounding": {
+    "charge_decimals": 2,
+    "rounding_mode": "half_up",
+    "level": "invoice_line"
+  },
+  "rate_schedule_ref": "NB-VOICE",
+  "rate_notice_days_increase": 7,
+  "rate_notice_days_decrease": 0,
+  "invoice_due_days_after_period": 5,
+  "payment_terms_days": 30,
+  "dispute_window_days": 14,
+  "dispute_min_amount": "50.00",
+  "pay_undisputed_required": true,
+  "dispute_evidence_required": [
+    "billed_rate",
+    "correct_rate",
+    "period",
+    "account_id",
+    "cdr_detail"
+  ],
+  "escalation_days": 30,
+  "clauses": [
+    {
+      "clause_id": "1.1",
+      "title": "Parties and term",
+      "summary": "Agreement between NBCS (seller) and ORX (buyer), effective 2025-03-01, evergreen."
+    },
+    {
+      "clause_id": "3.1",
+      "title": "Currency",
+      "summary": "All charges in USD."
+    },
+    {
+      "clause_id": "4.1",
+      "title": "Billing period",
+      "summary": "Monthly; calls attributed to a period by start time in UTC."
+    },
+    {
+      "clause_id": "4.2",
+      "title": "Billing increment",
+      "summary": "60/60: first 60 seconds, then 60-second increments."
+    },
+    {
+      "clause_id": "4.3",
+      "title": "Charge rounding",
+      "summary": "Line amount = billable minutes x rate, rounded half-up to 2 decimals per invoice line."
+    },
+    {
+      "clause_id": "5.1",
+      "title": "Invoicing",
+      "summary": "Invoice issued within 5 days after period end, with summary by destination; CDR detail on request."
+    },
+    {
+      "clause_id": "5.2",
+      "title": "Payment",
+      "summary": "Payment due 30 days from invoice date."
+    },
+    {
+      "clause_id": "6.1",
+      "title": "Rate decks",
+      "summary": "Seller prices from the NB-VOICE rate deck family; decks may be full or partial."
+    },
+    {
+      "clause_id": "6.2",
+      "title": "Change indicators",
+      "summary": "Every changed row carries a change flag and effective date."
+    },
+    {
+      "clause_id": "6.3",
+      "title": "Rate increase notice",
+      "summary": "An increase or new destination takes effect no earlier than the first full UTC day starting at least 7 days after the notice is sent; until then the previous rate applies."
+    },
+    {
+      "clause_id": "6.4",
+      "title": "Rate decreases",
+      "summary": "A decrease takes effect on the stated effective date, with no notice period."
+    },
+    {
+      "clause_id": "8.1",
+      "title": "Dispute window",
+      "summary": "Buyer may dispute in writing within 14 days of the invoice date."
+    },
+    {
+      "clause_id": "8.2",
+      "title": "Minimum dispute",
+      "summary": "Disputes below USD 50.00 per invoice are not accepted."
+    },
+    {
+      "clause_id": "8.3",
+      "title": "Undisputed amounts",
+      "summary": "Buyer pays the undisputed portion by the due date."
+    },
+    {
+      "clause_id": "8.4",
+      "title": "Dispute evidence",
+      "summary": "Notice states billed rate, correct rate, period, account ID and supporting CDR detail."
+    },
+    {
+      "clause_id": "8.5",
+      "title": "Escalation",
+      "summary": "Disputes unresolved after 30 days escalate to commercial management."
+    },
+    {
+      "clause_id": "8.6",
+      "title": "Credits",
+      "summary": "Upheld disputes are credited on the next invoice."
+    }
+  ],
+  "amendments": [
+    "AGR-NB-2025-014-A1"
+  ]
+}

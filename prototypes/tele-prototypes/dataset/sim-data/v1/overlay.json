@@ -1,0 +1,5 @@
+{
+  "inherits": "sim-data/base",
+  "deleted": [],
+  "note": "rejects.csv without the CO-MOB UNMAPPED_TRUNK rows"
+}

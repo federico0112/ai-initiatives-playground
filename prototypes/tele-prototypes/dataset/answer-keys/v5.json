@@ -1,0 +1,18 @@
+{
+  "scenario": "v5",
+  "edit": "invoice line 4 amount 5520.00; subtotal 27000.00",
+  "step2": {
+    "blocking": true,
+    "check": "Totals",
+    "detail": "lines sum to 27270.00 but subtotal says 27000.00; line 4 is 250000 x 0.0210 = 5250.00, not 5520.00"
+  },
+  "decision": {
+    "decision": "request_evidence",
+    "items": [
+      {
+        "to": "carrier",
+        "item": "corrected invoice"
+      }
+    ]
+  }
+}

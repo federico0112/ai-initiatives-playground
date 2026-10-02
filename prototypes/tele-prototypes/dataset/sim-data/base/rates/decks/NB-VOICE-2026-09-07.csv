@@ -1,0 +1,2 @@
+dial_code,destination,destination_group,service,mcc_mnc,rate,currency,effective_date,end_date,change_flag,billing_increment,connection_fee
+521,Mexico Mobile,MX-MOB,voice,,0.0185,USD,2026-09-15,,INCREASE,60/60,0.0000

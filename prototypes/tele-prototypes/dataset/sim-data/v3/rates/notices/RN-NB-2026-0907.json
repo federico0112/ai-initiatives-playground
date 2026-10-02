@@ -1,0 +1,18 @@
+{
+  "notice_id": "RN-NB-2026-0907",
+  "from_party": "NBCS",
+  "sent_at": "2026-09-12T14:00:00Z",
+  "received_at": "2026-09-12T14:03:00Z",
+  "channel": "email",
+  "subject": "NBCS rate notification: Mexico Mobile increase",
+  "deck_id": "NB-VOICE-2026-09-07",
+  "summary_changes": [
+    {
+      "destination_group": "MX-MOB",
+      "old_rate": "0.0120",
+      "new_rate": "0.0185",
+      "effective_date": "2026-09-15",
+      "change_flag": "INCREASE"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "scenario": "v4",
+  "edit": "rates/decks/NB-VOICE-2026-09-07.csv deleted",
+  "step2": {
+    "blocking": true,
+    "check": "Effective dates / required record",
+    "detail": "deck_history and rating run reference NB-VOICE-2026-09-07 but the deck file is absent"
+  },
+  "decision": {
+    "decision": "request_evidence",
+    "items": [
+      {
+        "to": "internal_team",
+        "item": "rate deck NB-VOICE-2026-09-07 and notice RN-NB-2026-0907"
+      }
+    ]
+  },
+  "must_not": [
+    "compute a supported amount before the deck is restored"
+  ]
+}
