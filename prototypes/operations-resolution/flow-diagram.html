@@ -1,0 +1,291 @@
+<title>SMS Delivery Incident Flow</title>
+<!-- Copy of the published artifact https://claude.ai/artifact/6hUKkCFc4gVKXdUWUQ8uB7 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: same visual system as prototype one's flow; single reading column, the flow figure first, then step detail, hidden cases and guardrails. */
+:root {
+  --bg: #F5F7FA; --surface: #FFFFFF; --fg: #18202B; --muted: #5A6577; --line: #C7CFDA;
+  --rules: #2C68A8; --rules-soft: #E3EDF8;
+  --agent: #8A5A00; --agent-soft: #F7ECD6;
+  --analyst: #7A3A9A; --analyst-soft: #F1E4F7;
+  --ledger: #23786A; --ledger-soft: #DDF1EC;
+  --warn: #B4442E;
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #10151C; --surface: #18202A; --fg: #E5E9EF; --muted: #9AA5B5; --line: #34414F;
+  --rules: #84B6EA; --rules-soft: #1C2D42; --agent: #E3B25A; --agent-soft: #3A2D14;
+  --analyst: #CC9DE8; --analyst-soft: #33213E; --ledger: #6DC6B2; --ledger-soft: #15322D; --warn: #F08A72; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #10151C; --surface: #18202A; --fg: #E5E9EF; --muted: #9AA5B5; --line: #34414F;
+  --rules: #84B6EA; --rules-soft: #1C2D42; --agent: #E3B25A; --agent-soft: #3A2D14;
+  --analyst: #CC9DE8; --analyst-soft: #33213E; --ledger: #6DC6B2; --ledger-soft: #15322D; --warn: #F08A72; color-scheme: dark }
+
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 64px; display: flex; flex-direction: column; gap: 36px; }
+h1, h2 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(26px, 4vw, 36px); font-weight: 800; }
+h2 { font-size: 20px; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+header { display: flex; flex-direction: column; gap: 10px; }
+.lede { color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 14px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chip { font-family: var(--f-mono); font-size: 11px; padding: 2px 8px; border-radius: 3px; font-weight: 500; }
+.c-rules { background: var(--rules-soft); color: var(--rules); }
+.c-agent { background: var(--agent-soft); color: var(--agent); }
+.c-analyst { background: var(--analyst-soft); color: var(--analyst); }
+.c-ledger { background: var(--ledger-soft); color: var(--ledger); }
+.swatch-dash { width: 22px; height: 12px; border: 1.5px dashed var(--muted); border-radius: 2px; }
+figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding-block: 18px; padding-inline: 12px; display: flex; flex-direction: column; gap: 12px; }
+.scroll { overflow-x: auto; }
+svg.flow { display: block; width: 100%; min-width: 760px; height: auto; font-family: var(--f-body); }
+figcaption { font-size: 13px; color: var(--muted); padding-inline: 8px; max-width: 80ch; }
+.box { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; }
+.box-ext { fill: var(--surface); stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.box-gate { fill: var(--analyst-soft); stroke: var(--analyst); stroke-width: 2; }
+.box-out { fill: var(--surface); stroke: var(--fg); stroke-width: 1.6; }
+.box-wait { fill: var(--bg); stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.rail { fill: var(--ledger-soft); stroke: var(--ledger); stroke-width: 1.2; }
+.t-title { fill: var(--fg); font-size: 14px; font-weight: 600; }
+.t-sub { fill: var(--muted); font-size: 12px; }
+.t-src { fill: var(--fg); font-size: 12px; }
+.t-label { fill: var(--muted); font-size: 11.5px; font-style: italic; }
+.t-num { fill: var(--muted); font-family: var(--f-mono); font-size: 12px; }
+.t-rail { fill: var(--ledger); font-family: var(--f-display); font-size: 15px; font-weight: 700; letter-spacing: 0.06em; }
+.t-rail-sub { fill: var(--ledger); font-size: 11.5px; }
+.t-head { fill: var(--muted); font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em; }
+.flowline { stroke: var(--fg); stroke-width: 1.4; fill: none; }
+.branch { stroke: var(--muted); stroke-width: 1.4; fill: none; stroke-dasharray: 6 4; }
+.loop-analyst { stroke: var(--analyst); stroke-width: 1.4; fill: none; stroke-dasharray: 6 4; }
+.loop-warn { stroke: var(--warn); stroke-width: 1.4; fill: none; stroke-dasharray: 6 4; }
+.cite { stroke: var(--ledger); stroke-width: 1.2; fill: none; stroke-dasharray: 3 3; }
+.feed { stroke: var(--line); stroke-width: 1.2; fill: none; }
+.mk-fg { fill: var(--fg); } .mk-muted { fill: var(--muted); } .mk-analyst { fill: var(--analyst); } .mk-warn { fill: var(--warn); }
+.dot { fill: var(--ledger); }
+.b-rules rect { fill: var(--rules-soft); } .b-rules text { fill: var(--rules); }
+.b-agent rect { fill: var(--agent-soft); } .b-agent text { fill: var(--agent); }
+.b-analyst rect { fill: var(--surface); } .b-analyst text { fill: var(--analyst); }
+.badge text { font-family: var(--f-mono); font-size: 10.5px; font-weight: 500; }
+.opt rect { fill: var(--bg); stroke: var(--line); }
+.opt text { fill: var(--fg); font-size: 11px; }
+.t-warn { fill: var(--warn); font-size: 11.5px; font-style: italic; }
+.t-analyst { fill: var(--analyst); font-size: 11.5px; font-style: italic; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13.5px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: none; }
+th { font-family: var(--f-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 500; background: var(--bg); }
+td.step { white-space: nowrap; font-weight: 600; }
+td.step .n { font-family: var(--f-mono); color: var(--muted); margin-right: 6px; font-weight: 400; }
+td .chip { display: inline-block; margin-top: 4px; }
+td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+ul.rules { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; max-width: 75ch; }
+code { font-family: var(--f-mono); font-size: 0.92em; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Prototype 2 · Operations Resolution Agents</div>
+    <h1>SMS delivery incident flow</h1>
+    <p class="lede">How one case moves from an alert that delivery to Mexico / Altavia Movil fell from 94% to 68% to an evidence-backed supplier escalation and a verified recovery. The system shows competing causes when records conflict, waits when the evidence is not in yet, and never changes routes or contacts a supplier without an operations decision.</p>
+  </header>
+
+  <section>
+    <div class="legend">
+      <span><span class="chip c-rules">rules</span> deterministic code, same input gives same output</span>
+      <span><span class="chip c-agent">agent</span> model reasoning, bounded by cited evidence</span>
+      <span><span class="chip c-analyst">analyst</span> operations decision</span>
+      <span><span class="swatch-dash"></span> outside our customer's systems, or a paused state</span>
+    </div>
+
+    <figure>
+      <div class="scroll">
+      <svg class="flow" viewBox="0 0 940 1120" role="img" aria-label="Eight source systems feed seven steps: open incident case, collect evidence, reconstruct timeline, diagnose cause and owner, operations review, prepare escalation, evaluate reply and verify recovery, ending in a closure record. When receipts are still pending the case waits and rechecks. The analyst can return the diagnosis. An incomplete supplier reply loops back to a follow-up escalation. Every step writes to and cites an evidence ledger.">
+        <defs>
+          <marker id="a-fg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-fg"/></marker>
+          <marker id="a-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-muted"/></marker>
+          <marker id="a-analyst" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-analyst"/></marker>
+          <marker id="a-warn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-warn"/></marker>
+        </defs>
+
+        <!-- Source systems -->
+        <text x="20" y="28" class="t-head">SOURCE RECORDS (SIMULATED)</text>
+        <g>
+          <rect x="20" y="40" width="200" height="34" rx="4" class="box-ext"/><text x="32" y="62" class="t-src">Monitoring alert</text>
+          <rect x="20" y="82" width="200" height="34" rx="4" class="box-ext"/><text x="32" y="104" class="t-src">Messages and receipts</text>
+          <rect x="20" y="124" width="200" height="34" rx="4" class="box-ext"/><text x="32" y="146" class="t-src">Route history</text>
+          <rect x="20" y="166" width="200" height="34" rx="4" class="box-ext"/><text x="32" y="188" class="t-src">Supplier SLAs and contacts</text>
+          <rect x="20" y="208" width="200" height="34" rx="4" class="box-ext"/><text x="32" y="230" class="t-src">Maintenance notices</text>
+          <rect x="20" y="250" width="200" height="34" rx="4" class="box-ext"/><text x="32" y="272" class="t-src">Customer tickets</text>
+          <rect x="20" y="292" width="200" height="34" rx="4" class="box-ext"/><text x="32" y="314" class="t-src">Active test SMS</text>
+        </g>
+        <path d="M220 57 H250 V86 H272" class="feed" marker-end="url(#a-muted)"/>
+        <path d="M220 99 H250 M220 141 H250 M220 183 H250 M220 225 H250 M220 267 H250 M220 309 H250" class="feed"/>
+        <path d="M250 99 V309" class="feed"/>
+        <path d="M250 218 H272" class="feed" marker-end="url(#a-muted)"/>
+
+        <!-- Steps: x 274..654, height 88, pitch 130 starting y 42 -->
+        <g>
+          <rect x="274" y="42" width="380" height="88" rx="5" class="box"/>
+          <text x="290" y="66" class="t-num">1</text><text x="308" y="66" class="t-title">Open incident case</text>
+          <text x="290" y="88" class="t-sub">From an alert, a customer ticket or a manual report.</text>
+          <text x="290" y="106" class="t-sub">Affected network, start time, priority from the SLA.</text>
+          <g class="badge b-rules"><rect x="584" y="54" width="56" height="20" rx="3"/><text x="597" y="68">rules</text></g>
+        </g>
+        <path d="M464 130 V170" class="flowline" marker-end="url(#a-fg)"/>
+        <g>
+          <rect x="274" y="172" width="380" height="88" rx="5" class="box"/>
+          <text x="290" y="196" class="t-num">2</text><text x="308" y="196" class="t-title">Collect evidence</text>
+          <text x="290" y="218" class="t-sub">Rates by supplier, network and sender; receipt coverage;</text>
+          <text x="290" y="236" class="t-sub">errors, routes, SLAs, notices, tickets, tests. As of now.</text>
+          <g class="badge b-rules"><rect x="584" y="184" width="56" height="20" rx="3"/><text x="597" y="198">rules</text></g>
+        </g>
+        <path d="M464 260 V300" class="flowline" marker-end="url(#a-fg)"/>
+        <g>
+          <rect x="274" y="302" width="380" height="88" rx="5" class="box"/>
+          <text x="290" y="326" class="t-num">3</text><text x="308" y="326" class="t-title">Reconstruct timeline</text>
+          <text x="290" y="348" class="t-sub">Order every event; flag gaps (pending receipts, missing</text>
+          <text x="290" y="366" class="t-sub">notices) and contradictions ("no impact" vs the data).</text>
+          <g class="badge b-rules"><rect x="530" y="314" width="50" height="20" rx="3"/><text x="540" y="328">rules</text></g>
+          <g class="badge b-agent"><rect x="586" y="314" width="54" height="20" rx="3"/><text x="597" y="328">agent</text></g>
+        </g>
+        <path d="M464 390 V430" class="flowline" marker-end="url(#a-fg)"/>
+        <g>
+          <rect x="274" y="432" width="380" height="118" rx="5" class="box"/>
+          <text x="290" y="456" class="t-num">4</text><text x="308" y="456" class="t-title">Diagnose cause and owner</text>
+          <text x="290" y="478" class="t-sub">Which slice moved: one supplier, every supplier, one</text>
+          <text x="290" y="496" class="t-sub">sender, or our own route change. Alternatives kept.</text>
+          <g class="badge b-rules"><rect x="530" y="444" width="50" height="20" rx="3"/><text x="540" y="458">rules</text></g>
+          <g class="badge b-agent"><rect x="586" y="444" width="54" height="20" rx="3"/><text x="597" y="458">agent</text></g>
+          <g class="opt"><rect x="290" y="512" width="96" height="22" rx="3"/><text x="302" y="527">escalate</text></g>
+          <g class="opt"><rect x="392" y="512" width="86" height="22" rx="3"/><text x="404" y="527">contain</text></g>
+          <g class="opt"><rect x="484" y="512" width="80" height="22" rx="3"/><text x="492" y="527">notify sender</text></g>
+          <g class="opt"><rect x="570" y="512" width="70" height="22" rx="3"/><text x="580" y="527">wait</text></g>
+        </g>
+
+        <!-- Wait loop -->
+        <rect x="20" y="440" width="200" height="78" rx="4" class="box-wait"/>
+        <text x="32" y="462" class="t-title">Wait and recheck</text>
+        <text x="32" y="482" class="t-sub">Receipts pending or an</text>
+        <text x="32" y="498" class="t-sub">operator window still open</text>
+        <path d="M274 480 H222" class="branch" marker-end="url(#a-muted)"/>
+        <path d="M120 440 V410 H262 V250 H272" class="branch" marker-end="url(#a-muted)"/>
+        <text x="132" y="402" class="t-label">recheck later</text>
+
+        <path d="M464 550 V590" class="flowline" marker-end="url(#a-fg)"/>
+        <g>
+          <rect x="274" y="592" width="380" height="88" rx="5" class="box-gate"/>
+          <text x="290" y="616" class="t-num">5</text><text x="308" y="616" class="t-title">Operations review</text>
+          <text x="290" y="638" class="t-sub">Approve, revise or reject the diagnosis and action.</text>
+          <text x="290" y="656" class="t-sub">Nothing external happens before this decision.</text>
+          <g class="badge b-analyst"><rect x="572" y="604" width="68" height="20" rx="3" stroke="currentColor"/><text x="582" y="618">analyst</text></g>
+        </g>
+        <path d="M654 636 H676 V490 H656" class="loop-analyst" marker-end="url(#a-analyst)"/>
+        <text x="682" y="566" class="t-analyst" transform="rotate(90 682 566)">return</text>
+
+        <path d="M464 680 V720" class="flowline" marker-end="url(#a-fg)"/>
+        <g>
+          <rect x="274" y="722" width="380" height="88" rx="5" class="box"/>
+          <text x="290" y="746" class="t-num">6</text><text x="308" y="746" class="t-title">Prepare escalation</text>
+          <text x="290" y="768" class="t-sub">Summary, scope, samples with supplier IDs, SLA terms,</text>
+          <text x="290" y="786" class="t-sub">actions tried, request. Sent only with the approval.</text>
+          <g class="badge b-rules"><rect x="530" y="734" width="50" height="20" rx="3"/><text x="540" y="748">rules</text></g>
+          <g class="badge b-agent"><rect x="586" y="734" width="54" height="20" rx="3"/><text x="597" y="748">agent</text></g>
+        </g>
+        <rect x="20" y="730" width="200" height="72" rx="4" class="box-ext"/>
+        <text x="32" y="754" class="t-title">Supplier NOC</text>
+        <text x="32" y="774" class="t-sub">Simulated replies on the</text>
+        <text x="32" y="790" class="t-sub">scenario's clock</text>
+        <path d="M274 752 H222" class="flowline" marker-end="url(#a-fg)"/>
+        <text x="228" y="744" class="t-label">packet</text>
+        <path d="M120 802 V880 H272" class="flowline" marker-end="url(#a-fg)"/>
+        <text x="132" y="872" class="t-label">reply</text>
+
+        <path d="M464 810 V850" class="flowline" marker-end="url(#a-fg)"/>
+        <g>
+          <rect x="274" y="852" width="380" height="88" rx="5" class="box"/>
+          <text x="290" y="876" class="t-num">7</text><text x="308" y="876" class="t-title">Reply and recovery</text>
+          <text x="290" y="898" class="t-sub">Root cause and fix time stated? Three full hours back</text>
+          <text x="290" y="916" class="t-sub">at baseline before closing.</text>
+          <g class="badge b-rules"><rect x="530" y="864" width="50" height="20" rx="3"/><text x="540" y="878">rules</text></g>
+          <g class="badge b-agent"><rect x="586" y="864" width="54" height="20" rx="3"/><text x="597" y="878">agent</text></g>
+        </g>
+        <path d="M654 900 H676 V780 H656" class="loop-warn" marker-end="url(#a-warn)"/>
+        <text x="690" y="800" class="t-warn" transform="rotate(90 690 800)">incomplete: follow up</text>
+
+        <path d="M464 940 V980" class="flowline" marker-end="url(#a-fg)"/>
+        <rect x="324" y="982" width="280" height="60" rx="5" class="box-out"/>
+        <text x="340" y="1006" class="t-title">Closure record</text>
+        <text x="340" y="1026" class="t-sub">Cause, owner, timeline, SLA impact</text>
+
+        <!-- Ledger rail -->
+        <rect x="740" y="42" width="180" height="1000" rx="6" class="rail"/>
+        <text x="830" y="80" text-anchor="middle" class="t-rail">EVIDENCE</text>
+        <text x="830" y="100" text-anchor="middle" class="t-rail">LEDGER</text>
+        <text x="830" y="128" text-anchor="middle" class="t-rail-sub">append-only, every claim</text>
+        <text x="830" y="144" text-anchor="middle" class="t-rail-sub">cites a record or a calc</text>
+        <text x="830" y="176" text-anchor="middle" class="t-rail-sub">hypotheses: for / against</text>
+        <text x="830" y="192" text-anchor="middle" class="t-rail-sub">contradictions linked</text>
+        <g>
+          <path d="M654 86 H740" class="cite"/><circle cx="740" cy="86" r="3.5" class="dot"/>
+          <path d="M654 216 H740" class="cite"/><circle cx="740" cy="216" r="3.5" class="dot"/>
+          <path d="M654 346 H740" class="cite"/><circle cx="740" cy="346" r="3.5" class="dot"/>
+          <path d="M676 470 H740" class="cite"/><circle cx="740" cy="470" r="3.5" class="dot"/>
+          <path d="M676 620 H740" class="cite"/><circle cx="740" cy="620" r="3.5" class="dot"/>
+          <path d="M676 766 H740" class="cite"/><circle cx="740" cy="766" r="3.5" class="dot"/>
+          <path d="M676 920 H740" class="cite"/><circle cx="740" cy="920" r="3.5" class="dot"/>
+          <path d="M604 1012 H740" class="cite"/><circle cx="740" cy="1012" r="3.5" class="dot"/>
+        </g>
+      </svg>
+      </div>
+      <figcaption>Steps 2 to 4 compute every number with rules; agents only interpret. The two dashed boxes on the left are the paused states that matter most for this case: waiting because the evidence is not in yet, and the supplier's side of the conversation.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Steps</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Step</th><th>What happens</th><th>Output</th><th>Where it can go wrong</th></tr></thead>
+      <tbody>
+        <tr><td class="step"><span class="n">1</span>Open case<br><span class="chip c-rules">rules</span></td><td>Create the incident from the alarm (or a customer ticket or manual report); link the alarm and any open tickets for the same network.</td><td>Incident case</td><td>The alarm's comment names a suspect route. Treat it as a lead, not a finding.</td></tr>
+        <tr><td class="step"><span class="n">2</span>Collect evidence<br><span class="chip c-rules">rules</span></td><td>Delivery rate and receipt coverage for the network, each supplier, the control network and each sender; error breakdown; route changes; SLA terms; notices; customer tickets; active tests. Everything read as of the current sim time.</td><td>Evidence inventory</td><td>Low coverage means receipts are pending, not failed.</td></tr>
+        <tr><td class="step"><span class="n">3</span>Timeline<br><span class="chip c-rules">rules</span> <span class="chip c-agent">agent</span></td><td>Order alarm, drop start, route changes, maintenance windows, tickets and tests. Mark gaps and contradictions.</td><td>Event timeline</td><td>"No impact expected" notice, yet the drop starts five minutes after the window.</td></tr>
+        <tr><td class="step"><span class="n">4</span>Diagnose<br><span class="chip c-rules">rules</span> <span class="chip c-agent">agent</span></td><td>Compare hypotheses: supplier link, operator, sender traffic, our own route change. Name the owner and the next step: escalate, contain on our side, tell the sender's account manager, or wait.</td><td>Diagnosis and owner</td><td>The same 68% fits four owners. Only the slices tell them apart.</td></tr>
+        <tr><td class="step"><span class="n">5</span>Ops review<br><span class="chip c-analyst">analyst</span></td><td>Approve, revise or reject. Route changes are carried out by a person, never by the system.</td><td>Approved action</td><td>Analyst may revise the packet, for example drop a credit claim that belongs to the account manager.</td></tr>
+        <tr><td class="step"><span class="n">6</span>Escalation<br><span class="chip c-rules">rules</span> <span class="chip c-agent">agent</span></td><td>Incident summary, affected scope (MCC-MNC, ranges, start), ten or more samples with the supplier's own message IDs, error breakdown, comparison with the other route, SLA terms, actions tried, request.</td><td>Escalation packet</td><td>Without supplier message IDs the supplier cannot search, and the contract says so.</td></tr>
+        <tr><td class="step"><span class="n">7</span>Reply and recovery<br><span class="chip c-rules">rules</span> <span class="chip c-agent">agent</span></td><td>Judge the reply against the contract (root cause and fix time). Close only after three full hours at baseline. If the reply is incomplete, follow up and escalate to the next level on the contract's clock.</td><td>Closure record</td><td>"No fault found, closing" while the data still shows 62%.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Test cases</h2>
+    <p>Every case raises the same alarm at 17:10 UTC: 68.0% against a 94.0% baseline. The alarm never decides by itself.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Case</th><th>What really happened</th><th>Telling evidence</th><th>Right outcome</th></tr></thead>
+      <tbody>
+        <tr><td class="step">Seeded</td><td>Northbridge's link to Altavia fails right after its maintenance</td><td>Northbridge 62.0%, Pacifica 92.0%, Verdemovil normal, errors UNDELIV 022, test SMS fail on one route</td><td>P1 escalation to Northbridge; recovery verified 23:05</td></tr>
+        <tr><td class="step">Misleading alert</td><td>One sender blasts a bad number list</td><td>Volume +49%, both routes drop alike, 93.8% without that sender, subscriber errors, tests pass</td><td>No escalation; note to the account manager</td></tr>
+        <tr><td class="step">Incomplete status</td><td>Same fault; supplier first says "no fault found"</td><td>Still 62% after the reply, no root cause given</td><td>Follow up with samples, level 2 at 19:25, close after 00:05</td></tr>
+        <tr><td class="step">Wait for evidence</td><td>Operator maintenance; messages queue</td><td>Receipt coverage 71.6%, normal errors, operator notice forwarded by one supplier</td><td>Wait, recheck after 18:00, close with the operator as owner</td></tr>
+        <tr><td class="step">Own change</td><td>Our routing moved 70% to a filtered best-effort route</td><td>Route change at 16:00, Cobalt 56.6% with UNDELIV 011/009, no SLA</td><td>Recommend the revert (a person does it)</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Guardrails</h2>
+    <ul class="rules">
+      <li>Every number comes from a rules calculation in the ledger; agents cite it and never introduce a new one.</li>
+      <li>Records are read as of the simulated clock, so a receipt that has not arrived is unknown, not failed.</li>
+      <li>No route change and no external message without an operations decision. Containment is a recommendation.</li>
+      <li>Closing needs verified recovery on the data, whatever the supplier says.</li>
+      <li>The demo measures brief quality and time to prepare it, not real-world time to repair.</li>
+    </ul>
+  </section>
+</div>
