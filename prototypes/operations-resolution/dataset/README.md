@@ -13,7 +13,7 @@ python3 generate_dataset.py --scale 0.1    # same scenarios, 10% of the volume, 
 pytest ../tests -v                         # generates at 0.1 into a temp folder, verifies, parses contracts, replays scenarios
 ```
 
-Options: `--out <dir>` (default `./sim-data`), `--scale <x>` (message volume multiplier), `--scenarios base,v1,...`. Output is byte-for-byte reproducible for the same options (fixed seed, gzip without timestamps), except the contract PDFs, which embed their creation date.
+Options: `--out <dir>` (default `./sim-data`), `--scale <x>` (message volume multiplier), `--scenarios base,v1,...`. Output is byte-for-byte reproducible for the same options (fixed seed, gzip without timestamps, fixed PDF creation date).
 
 ## What gets written
 
@@ -56,7 +56,7 @@ Each alarm reads 68.0% against a 94.0% baseline at 17:10 UTC on 2026-09-22, so t
 ## Making new test cases
 
 1. Add an entry to `SCENARIOS` in `generate_dataset.py`. The modifiers are `degrade` (a supplier/network gets a lower delivery ratio and a failure mix inside a window), `burst` (extra traffic from one customer with its own outcome), `queue` (receipts held until a release time), `route_changes` and `stream_p` (a supplier with a fixed ratio), plus `notices_extra`. Set `fix_or_end` to when recovery checking may start.
-2. Add its `TRUTH` entry (cause, owner, hypotheses, expected actions) and, if the supplier replies, its events in `scenario_yaml()`. Quote the `"on":` key: unquoted, YAML reads it as the boolean `true`.
+2. Add its `TRUTH` entry (cause, owner, hypotheses, expected actions) and, if the supplier replies, its events in `scenario_yaml()`.
 3. Add any planted pattern you want guaranteed to the design checks in `verify_dataset.py` section 6.
 4. Run the generator, the verifier and `pytest ../tests`. All figures in the answer key are computed from the generated files, so only the design checks need hand-picked numbers.
 

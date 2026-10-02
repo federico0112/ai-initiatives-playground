@@ -27,5 +27,4 @@ def test_generation_is_reproducible(tmp_path):
         assert run("generate_dataset.py", "--scale", "0.05", "--scenarios", "base,v1", "--out", str(out)).returncode == 0
     files = sorted(p.relative_to(a) for p in a.rglob("*") if p.is_file())
     assert files == sorted(p.relative_to(b) for p in b.rglob("*") if p.is_file())
-    # Rendered PDFs embed a creation date; their source Markdown is compared instead.
-    assert all((a / f).read_bytes() == (b / f).read_bytes() for f in files if f.suffix != ".pdf")
+    assert all((a / f).read_bytes() == (b / f).read_bytes() for f in files)

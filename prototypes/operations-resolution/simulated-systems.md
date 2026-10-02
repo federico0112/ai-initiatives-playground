@@ -264,12 +264,12 @@ events:
   - at: 2026-09-22T17:10:00Z
     action: open_case_from_alarm
     alarm_id: ALM-2026-0922-0042
-  - "on": escalation_submitted   # quoted: unquoted YAML reads `on` as true
+  - on: escalation_submitted
     to: SUP-NB
     after: PT15M
     action: supplier_response
     response: {status: acknowledged, ticket_id: NB-T-551203}
-  - "on": escalation_submitted
+  - on: escalation_submitted
     to: SUP-NB
     at: 2026-09-22T19:40:00Z     # delivered at this time, or on submission if later
     action: supplier_response

@@ -11,7 +11,7 @@ Writes, under --out (default ./sim-data next to this script):
 
 Nothing generated here is meant to be committed. Needs the shared telco_platform package
 (`pip install -e platform` from the repo root). Fixed seed, so the output is byte-for-byte
-reproducible for a given --scale, except the rendered contract PDFs (they embed a creation date).
+reproducible for a given --scale.
 
   python3 generate_dataset.py                 # full size, about 470k messages in base
   python3 generate_dataset.py --scale 0.1     # small and fast, for tests and CI
@@ -970,14 +970,14 @@ events:
     action: open_case_from_alarm
     alarm_id: ALM-2026-0922-0042
 """
-    ack = """  - "on": escalation_submitted
+    ack = """  - on: escalation_submitted
     to: SUP-NB
     after: PT15M
     action: supplier_response
     response: {status: acknowledged, ticket_id: NB-T-551203, message: "Ticket opened, investigating."}
 """
     if scn == "base":
-        return head + ack + """  - "on": escalation_submitted
+        return head + ack + """  - on: escalation_submitted
     to: SUP-NB
     at: 2026-09-22T19:40:00Z      # delivered at this time, or on submission if later
     action: supplier_response
@@ -993,13 +993,13 @@ analyst_script:
     reason: "Credits are claimed through the account manager (clause 7.2), keep the NOC escalation operational."
 """
     if scn == "v2":
-        return head + ack + """  - "on": escalation_submitted
+        return head + ack + """  - on: escalation_submitted
     to: SUP-NB
     at: 2026-09-22T18:10:00Z
     action: supplier_response
     response: {status: resolved, root_cause: null, fix_time: null,
                message: "We checked our platform, all binds are up and traffic looks normal on our side. No fault found, closing the ticket. Please check your side."}
-  - "on": follow_up_submitted
+  - on: follow_up_submitted
     to: SUP-NB
     at: 2026-09-22T20:50:00Z
     action: supplier_response
@@ -1078,9 +1078,6 @@ def main():
                 src = full / rel
                 if rel in base_files and (out / "base" / rel).read_bytes() == src.read_bytes():
                     continue
-                md = rel[:-4] + ".md"
-                if rel.endswith(".pdf") and (out / "base" / md).read_bytes() == (full / md).read_bytes():
-                    continue  # PDFs embed a creation date; same source Markdown means same contract
                 (var / rel).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(src, var / rel)
             deleted = sorted(f for f in base_files - var_files if not f.startswith("messages/"))
