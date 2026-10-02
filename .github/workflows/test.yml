@@ -32,3 +32,20 @@ jobs:
         run: |
           cd prototypes/${{ matrix.prototype }}
           pytest tests/test_app.py -v
+
+  platform:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install platform
+        run: pip install "./platform[dev]"
+
+      - name: Run tests
+        run: pytest platform/tests -v
