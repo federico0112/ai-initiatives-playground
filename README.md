@@ -8,6 +8,7 @@ Monorepo for AI initiative prototypes.
 |-----------|-------------|
 | [hello-world](prototypes/hello-world) | Sample Flask app template |
 | [rag-agent](prototypes/rag-agent) | RAG agent with document embedding and chat using MongoDB Atlas vector storage |
+| [operations-resolution](prototypes/operations-resolution) | Planning, simulated systems and test-case generator for the SMS delivery incident prototype (no app yet) |
 
 ## Deployment
 

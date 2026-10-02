@@ -49,3 +49,20 @@ jobs:
 
       - name: Run tests
         run: pytest platform/tests -v
+
+  operations-resolution:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install platform
+        run: pip install "./platform[dev]"
+
+      - name: Run tests (generates the simulated data at 10% volume)
+        run: pytest prototypes/operations-resolution/tests -v
