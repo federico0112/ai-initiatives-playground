@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "telco-platform"
+version = "0.1.0"
+description = "Shared case, evidence, connector and simulation code for the telecom resolution prototypes"
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml>=6.0",
+    "pypdf>=5.0.0",
+    "fpdf2>=2.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["telco_platform*"]

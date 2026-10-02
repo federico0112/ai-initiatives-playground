@@ -57,6 +57,20 @@ prototypes/
         └── test_app.py
 ```
 
+## Shared platform
+
+`platform/` is an installable package (`telco_platform`) shared by the telecom prototypes: citations,
+evidence ledger, approval gate, connectors (tickets with local/Jira/Salesforce-shaped backends, inbox,
+carrier portal, outbox, CRM), contract PDF parsing and the scenario simulator. See `platform/README.md`.
+
+```bash
+pip install -e platform
+pytest platform/tests -v
+```
+
+Move code into `platform/` only when a second prototype needs it. Generated simulation data is never
+committed; prototypes keep generator scripts and scenario definitions only.
+
 ## Conventions
 
 - Python 3.11, Flask apps on port 8080
