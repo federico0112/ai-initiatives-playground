@@ -1,7 +1,0 @@
-dial_code,destination,destination_group,service,mcc_mnc,rate,currency,effective_date,end_date,change_flag,billing_increment,connection_fee
-521,Mexico Mobile,MX-MOB,voice,,0.0120,USD,2026-08-01,,UNCHANGED,60/60,0.0000
-52,Mexico Fixed,MX-FIX,voice,,0.0060,USD,2026-08-01,,UNCHANGED,60/60,0.0000
-573,Colombia Mobile,CO-MOB,voice,,0.0150,USD,2026-08-01,,UNCHANGED,60/60,0.0000
-55119,Brazil Mobile,BR-MOB,voice,,0.0210,USD,2026-08-01,,UNCHANGED,60/60,0.0000
-55219,Brazil Mobile,BR-MOB,voice,,0.0210,USD,2026-08-01,,UNCHANGED,60/60,0.0000
-5025,Guatemala Mobile,GT-MOB,voice,,0.0850,USD,2026-08-01,,UNCHANGED,60/60,0.0000

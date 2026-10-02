@@ -1,9 +1,0 @@
-trunk_id,carrier_id,direction,valid_from,valid_to
-TRK-NB-01,NBCS,egress,2025-03-01,
-TRK-NB-02,NBCS,egress,2025-03-01,
-TRK-NB-03,NBCS,egress,2025-03-01,
-TRK-NB-04,NBCS,egress,2025-03-01,
-TRK-NB-05,NBCS,egress,2025-03-01,
-TRK-NB-06,NBCS,egress,2025-03-01,
-TRK-NB-07,NBCS,egress,2026-10-01,
-TRK-AL-01,ALTV,egress,2025-06-01,

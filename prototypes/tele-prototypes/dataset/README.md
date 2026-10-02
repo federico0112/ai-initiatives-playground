@@ -7,15 +7,32 @@ variants V1 to V6. All parties, trunks and numbers are fictional.
 Thresholds (confirmed by Federico, 2026-10-02): open a case when `|invoiced − expected| / invoiced > 2%`;
 request evidence when `unresolved / invoiced > 1%`.
 
+## Generating the data and test cases
+
+The data and answer keys are **not committed**. Generate them locally (Python 3.11, stdlib only,
+fixed seed, about 25 s):
+
+```bash
+cd prototypes/tele-prototypes/dataset
+python3 generate_dataset.py   # writes sim-data/ and answer-keys/
+python3 verify_dataset.py     # re-derives every figure; exits 1 on any mismatch
+```
+
+The output is deterministic: every run produces byte-identical files. Both output folders are
+listed in `.gitignore`. Each scenario (base, v1 to v6) is a test case: its data root under
+`sim-data/<id>/` is what the agents see, and `answer-keys/<id>.json` is the expected outcome to
+score them against. To add or change a scenario, edit `generate_dataset.py` and regenerate; do not
+hand-edit the generated files.
+
 ## Layout
 
 ```
 dataset/
-  generate_dataset.py      rebuilds everything (stdlib, fixed seed, ~45 s)
+  generate_dataset.py      rebuilds everything (stdlib, fixed seed)
   verify_dataset.py        re-derives every figure from the files only; exits 1 on any mismatch
-  sim-data/base/           full data root, spec section 9 layout
-  sim-data/v1 .. v6/       overlays on base (see below)
-  answer-keys/<id>.json    ground truth per scenario; keep it away from the agents
+  sim-data/base/           (generated) full data root, spec section 9 layout
+  sim-data/v1 .. v6/       (generated) overlays on base (see below)
+  answer-keys/<id>.json    (generated) ground truth per scenario; keep it away from the agents
 ```
 
 `sim-data/base` holds 530,597 CDRs in 30 gzipped daily files (about 18 MB), the daily summary,
@@ -64,6 +81,6 @@ check passes and the deck's stated 09-15 is the carrier's error. Supported cover
 
 ## Checks
 
-`python3 verify_dataset.py` passes 27 checks on the current files: daily summary equals the CDR
+`python3 verify_dataset.py` passes 27 checks on freshly generated files: daily summary equals the CDR
 roll-up exactly, every rated line follows the `contracted_rate` rule, invoice lines sum to the
 header, and every figure in the table above recomputes to the cent.

@@ -8,9 +8,9 @@ companion for wholesale carrier invoice disputes (invoice ~8% above expected).
 | `flow-diagram.html` | Case flow diagram (copy of https://claude.ai/artifact/XLPHPA893GkoasUvaCZiqi) |
 | `industry-records-research.md` | Research notes on real-world record formats |
 | `simulated-systems.md` | Spec for the simulated external systems (invoices, contracts, rates, usage, cases, ledger, carrier portal) |
-| `dataset/` | Synthetic dataset: generator, checker, scenario data roots and answer keys (see `dataset/README.md`) |
+| `dataset/` | Synthetic dataset generator and checker; the data and answer keys are generated locally, not committed (see `dataset/README.md`) |
 
-Rebuild and check the dataset:
+Generate and check the dataset (writes `dataset/sim-data/` and `dataset/answer-keys/`, both git-ignored):
 
 ```bash
 cd dataset
