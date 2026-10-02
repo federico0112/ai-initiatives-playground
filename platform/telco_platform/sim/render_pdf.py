@@ -4,14 +4,17 @@ The generators write contracts as Markdown; this turns them into the PDF a carri
 actually send, so the contract parser is tested against a PDF and not against the Markdown.
 Supports what the generated contracts use: `#` headings, `**bold**`, paragraphs, and
 `<a id="clause-..."></a>` anchors (dropped; the parser finds clauses by their numbers).
+Output is byte-reproducible: the creation date is fixed.
 """
 
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fpdf import FPDF
 
 _ANCHOR = re.compile(r'^<a id="[^"]*"></a>$')
+_FIXED_DATE = datetime(2026, 1, 1, tzinfo=timezone.utc)  # constant so the same input gives the same bytes
 _LATIN1 = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"',
                          "–": "-", "—": "-", "×": "x", "−": "-", "…": "..."})
 
@@ -22,6 +25,7 @@ def _clean(text: str) -> str:
 
 def render_markdown_pdf(markdown: str, out_path: str | Path) -> Path:
     pdf = FPDF(format="A4")
+    pdf.set_creation_date(_FIXED_DATE)
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     for block in re.split(r"\n\s*\n", markdown.strip()):

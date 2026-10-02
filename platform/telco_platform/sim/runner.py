@@ -50,7 +50,8 @@ class Runner:
         self.history: list[dict] = []
         self._pending: list[_Pending] = []
         self._seq = 0
-        events = scenario.get("events") or []
+        # YAML 1.1 (PyYAML) reads an unquoted `on:` key as boolean True.
+        events = [{("on" if k is True else k): v for k, v in e.items()} for e in scenario.get("events") or []]
         unknown = sorted({e["action"] for e in events} - set(handlers))
         if unknown:
             raise ValueError(f"no handler for actions: {unknown}")

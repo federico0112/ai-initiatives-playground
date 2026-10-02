@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from pypdf import PdfReader
 
 from telco_platform.contracts.compare import compare_terms
 from telco_platform.contracts.extract import TermRule, extract_terms
@@ -60,3 +61,12 @@ def test_validate_agreement():
     good["buyer_party"] = good["seller_party"] = {"party_id": "X"}
     assert validate_agreement(good) == []
     assert validate_agreement({**good, "status": "draft"}, extra=("sla",)) == ["missing sla", "unknown status 'draft'"]
+
+
+def test_render_is_byte_reproducible(tmp_path):
+    a = render_markdown_pdf(SAMPLE.read_text(), tmp_path / "a.pdf")
+    b = render_markdown_pdf(SAMPLE.read_text(), tmp_path / "b.pdf")
+    assert a.read_bytes() == b.read_bytes()
+    # The creation date is fixed, not the wall clock, so re-runs on another day match too.
+    assert PdfReader(str(a)).metadata.creation_date.year == 2026
+    assert PdfReader(str(a)).metadata.creation_date.strftime("%m-%d") == "01-01"

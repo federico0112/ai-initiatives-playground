@@ -8,7 +8,7 @@ import pytest
 from telco_platform.sim.clock import SimClock, iso, parse_duration
 from telco_platform.sim.datagen import masked, q2, split_total, write_csv_gz
 from telco_platform.sim.overlay import DataRoot
-from telco_platform.sim.runner import Runner, deliver_file
+from telco_platform.sim.runner import Runner, deliver_file, load_scenario
 from telco_platform.sim.visibility import mask_pending, visible
 
 
@@ -117,6 +117,20 @@ def test_runner_at_is_floor_and_to_filters(tmp_path):
     assert seen == [] and iso(r.now) == "2026-10-05T11:00:00Z"
     r.wait()
     assert seen == ["2026-10-05T12:00:00Z"]
+
+
+def test_runner_accepts_unquoted_on_key_from_yaml(tmp_path):
+    f = tmp_path / "scenario.yaml"
+    f.write_text("sim_start: 2026-10-05T09:00:00Z\n"
+                 "events:\n"
+                 "  - on: portal_submit\n"
+                 "    after: P2D\n"
+                 "    action: portal_response\n")
+    fired = []
+    r = Runner(load_scenario(f), {"portal_response": lambda e, r: fired.append(iso(r.now))})
+    r.emit("portal_submit", claim_id="CLM-00001")
+    r.wait()
+    assert fired == ["2026-10-07T09:00:00Z"]
 
 
 def test_runner_rejects_unhandled_actions():
