@@ -8,7 +8,9 @@ Inputs: [industry-records-research.md](industry-records-research.md) (record sha
 - Open a case when `|invoiced − expected| / invoiced > 2%`.
 - Request evidence when the unresolved amount `> 1%` of the invoiced total.
 
-All companies, people, trunks and numbers below are fictional.
+**Service: wholesale A2P SMS termination** (changed from voice on 2026-10-20 at Federico's request). Rates are per message segment by destination network (MCC-MNC), and every segment the carrier accepts at submit is billable whatever its delivery receipt says.
+
+All companies, people, networks, MCC-MNC codes, SMPP binds and numbers below are fictional.
 
 ---
 
@@ -35,8 +37,8 @@ contracts/  rates/     usage/        rating/      invoices/      carrier-portal/
 |---|---|---|---|---|
 | S1 | Contract repository | CLM / settlement "agreement" object + signed PDF | TMF651 Agreement | read |
 | S2 | Rate deck store | Rate management tool (deck versions, load history) + carrier rate notices by email | Carrier CSV deck; 46labs load history; TMF620 `validFor` | read |
-| S3 | Usage store | Mediation output: CDRs, daily summaries, reject log | FCS UK CDR v3 + wholesale switch fields; TMF635 | read |
-| S4 | Rated charges | Internal rating engine output | CGRateS rated CDR; TMF635 `ratedProductUsage` | read |
+| S3 | Usage store | Mediation output: message records (SMPP submit + delivery receipt), daily summaries, reject log | SMPP 3.4 `submit_sm_resp` + DLR; TMF635 | read |
+| S4 | Rated charges | Internal rating engine output | CGRateS rated usage; TMF635 `ratedProductUsage` | read |
 | S5 | Carrier invoice inbox | Email/FTP/iXLink invoice delivery to AP | UBL 2.1 / Peppol BIS 3 header + destination summary CSV | read |
 | S6 | Case store | Settlement dispute module, Salesforce Case, Jira | TMF621 Trouble Ticket | read/write |
 | S7 | Carrier dispute portal | Carrier's claims desk (e.g. Brightspeed process) | Brightspeed dispute fields | write (submit), read (responses) |
@@ -53,19 +55,19 @@ sim://<system>/<object-type>/<id>[#<fragment>]
 
 sim://contracts/agreement/AGR-NB-2025-014
 sim://contracts/agreement/AGR-NB-2025-014#clause-6.3
-sim://rates/deck/NB-VOICE-2026-09-07/row/521
+sim://rates/deck/NB-SMS-2026-09-07/row/334990
 sim://rates/notice/RN-NB-2026-0907
-sim://usage/cdr/CDR-20260903-000123
-sim://usage/daily/2026-09-03/MX-MOB
-sim://usage/reject/REJ-20260921-0007
-sim://usage/trunk_map/TRK-NB-07
-sim://rating/run/RUN-2026-09/line/2026-09-03/MX-MOB
+sim://usage/message/ORX-20260903-0000123
+sim://usage/daily/2026-09-03/MX-ALT
+sim://usage/reject/REJ-20260921-00007
+sim://usage/connection_map/SMPP-NB-07
+sim://rating/run/RUN-2026-09/line/2026-09-03/334990
 sim://invoices/invoice/NB-INV-2026-09-0412/line/3
 sim://cases/case/CASE-0001
 sim://ledger/calc/CALC-0001-005
 ```
 
-Fragments: `#clause-<n>` for contract clauses, `/row/<dial_code>` for deck rows, `/line/<n>` for invoice lines. A cite_id must resolve through the adapter's `resolve(cite_id)` call, which returns the record plus its source file path and line number.
+Fragments: `#clause-<n>` for contract clauses, `/row/<mcc_mnc>` for deck rows, `/line/<n>` for invoice lines. A cite_id must resolve through the adapter's `resolve(cite_id)` call, which returns the record plus its source file path and line number.
 
 ---
 
@@ -93,9 +95,10 @@ Files: `contracts/agreements/<agreement_id>.json` plus `contracts/documents/<agr
 | currency | string | req | ISO 4217 |
 | billing_cycle | enum | req | `monthly`, `weekly`, `daily` |
 | billing_timezone | string | req | IANA, e.g. `UTC`. Defines the period cut-off |
-| billing_increment | string | req | `60/60`, `30/6`, `1/1` (first increment / subsequent, seconds) |
+| billing_unit | enum | req | `segment` for SMS (voice would use an increment such as `60/60`) |
+| billing_basis | enum | req | `submitted` (every segment accepted at submit is billable) or `delivered` (only DELIVRD receipts) |
 | rounding | object | req | `{charge_decimals:2, rounding_mode:"half_up", level:"invoice_line"}` |
-| rate_schedule_ref | string | req | Deck family this agreement prices from, e.g. `NB-VOICE` |
+| rate_schedule_ref | string | req | Deck family this agreement prices from, e.g. `NB-SMS` |
 | rate_notice_days_increase | int | req | e.g. 7 |
 | rate_notice_days_decrease | int | req | e.g. 0 |
 | invoice_due_days_after_period | int | req | Invoice must be issued within N days of period end |
@@ -103,7 +106,7 @@ Files: `contracts/agreements/<agreement_id>.json` plus `contracts/documents/<agr
 | dispute_window_days | int | req | From invoice date |
 | dispute_min_amount | decimal(2) | — | Contractual threshold below which disputes are not accepted |
 | pay_undisputed_required | bool | req | |
-| dispute_evidence_required | string[] | req | e.g. `["billed_rate","correct_rate","period","account_id","cdr_detail"]` |
+| dispute_evidence_required | string[] | req | e.g. `["billed_rate","correct_rate","period","account_id","message_detail"]` |
 | escalation_days | int | — | Unresolved disputes escalate after N days |
 | clauses | object[] | req | `{clause_id, title, summary}`; `clause_id` matches an anchor in the `.md` document |
 | amendments | string[] | — | Agreement IDs of amendments (`associatedAgreement`) |
@@ -115,28 +118,28 @@ Files:
 - `rates/deck_history.csv` the load-history log
 - `rates/notices/<notice_id>.json` + `rates/notices/<notice_id>.eml.md` the carrier's rate-change notification as received
 
-`deck row` (CSV columns, carrier de facto layout):
+`deck row` (CSV columns, carrier de facto layout for SMS):
 
 | Column | Type | Req | Notes |
 |---|---|---|---|
-| dial_code | string | req | E.164 prefix without `+` |
-| destination | string | req | e.g. `Mexico Mobile` |
-| destination_group | string | req | Our normalized key, e.g. `MX-MOB`; reconciliation groups on this |
-| service | enum | req | `voice`, `sms` |
-| mcc_mnc | string | — | SMS decks only |
-| rate | decimal(4) | req | Per minute (voice) or per message (sms) |
+| mcc_mnc | string | req | Destination network key, e.g. `334990`; rows are matched on this exactly |
+| mcc / mnc | string | req | The two halves |
+| country | string | req | |
+| destination | string | req | Carrier's network label, e.g. `Mexico - Altavia Movil` |
+| network_group | string | req | Our normalized key, e.g. `MX-ALT`; reconciliation groups on this. One group can hold several MCC-MNCs (Brazil `BR-CRZ` = 724990 + legacy 724991) |
+| service | enum | req | `sms` |
+| rate | decimal(4) | req | Per message segment |
 | currency | string | req | |
 | effective_date | date | req | Row applies from 00:00 in the agreement's `billing_timezone` |
 | end_date | date | — | Exclusive; null = open |
 | change_flag | enum | req | `NEW`, `INCREASE`, `DECREASE`, `UNCHANGED`, `CLOSED` |
-| billing_increment | string | req | Usually mirrors the agreement |
-| connection_fee | decimal(4) | — | |
+| billing_unit | string | req | `segment` |
 
 `deck_history` (one row per deck load):
 
 | Column | Type | Req | Notes |
 |---|---|---|---|
-| deck_id | string | req | `NB-VOICE-2026-09-07` |
+| deck_id | string | req | `NB-SMS-2026-09-07` |
 | rate_schedule_ref | string | req | Ties to agreement |
 | deck_type | enum | req | `full` (A-Z) or `partial` |
 | source_file | string | req | Filename as received |
@@ -159,41 +162,41 @@ Files:
 | channel | enum | req | `email`, `portal`, `ixlink_like` |
 | subject | string | req | |
 | deck_id | string | req | Deck attached to the notice |
-| summary_changes | object[] | req | `{destination_group, old_rate, new_rate, effective_date, change_flag}` |
+| summary_changes | object[] | req | `{network_group, mcc_mnc, old_rate, new_rate, effective_date, change_flag}` |
 
-**Resolving the contracted rate.** For a call at UTC time `t`, convert `t` to the agreement's `billing_timezone`, then take the deck row with the longest matching `dial_code` among loaded decks where `effective_date ≤ local_date(t) < end_date`. If two loaded decks give different rows for the same code and date, the later `received_at` wins, but an `INCREASE` row is only contractually effective from the first full day (in `billing_timezone`) that starts at least `rate_notice_days_increase` days after the notice's `sent_at`; before that, the previous row still applies. Step 3 calls this rule `contracted_rate(code, t)` and records the deck row it used.
+**Resolving the contracted rate.** For a message submitted at UTC time `t` to network `m`, convert `t` to the agreement's `billing_timezone`, then take the deck row with `mcc_mnc = m` among loaded decks where `effective_date ≤ local_date(t) < end_date`. If two loaded decks give different rows for the same code and date, the later `received_at` wins, but an `INCREASE` row is only contractually effective from the first full day (in `billing_timezone`) that starts at least `rate_notice_days_increase` days after the notice's `sent_at`; before that, the previous row still applies. Step 3 calls this rule `contracted_rate(mcc_mnc, t)` and records the deck row it used.
 
 ### S3 Usage store (mediation)
 
 Files:
-- `usage/cdrs/<YYYY-MM-DD>.csv.gz` one file per UTC day
+- `usage/messages/<YYYY-MM-DD>.csv.gz` one file per UTC submit day
 - `usage/daily_summary.csv` mediation's own daily roll-up
 - `usage/rejects.csv` records mediation dropped, with reason
-- `usage/trunk_map.csv` trunk → carrier mapping
+- `usage/connection_map.csv` SMPP bind → carrier mapping
 
-`cdr` (FCS v3 subset plus wholesale switch fields):
+`message` (one row per MT message, receipt merged in; same shape as prototype two's message store):
 
 | Column | Type | Req | Notes |
 |---|---|---|---|
-| cdr_id | string | req | `CDR-<YYYYMMDD>-<seq>` unique |
-| call_id | string | req | SIP Call-ID; duplicates detected on this |
-| start_time_utc | datetime | req | Connect time |
-| end_time_utc | datetime | req | |
-| duration_sec | int | req | Actual seconds |
-| a_number | string | req | E.164, masked to last 4 digits in prototype (`5255XXXX1234`) |
-| b_number | string | req | E.164 dialled, unmasked prefix needed for code match; mask last 4 |
-| ingress_trunk | string | req | Customer side |
-| egress_trunk | string | req | Carrier side; maps to carrier via `trunk_map` |
-| egress_carrier_id | string | req | From `trunk_map` |
-| release_cause | int | req | SIP/Q.850 cause; 16 = normal |
-| service | enum | req | `voice` |
+| msg_id | string | req | `ORX-<YYYYMMDD>-<seq>` unique |
+| submitted_at_utc | datetime (ms) | req | Time of `submit_sm_resp`; defines the billing period |
+| customer_id / sender_id | string | req | Enterprise sender and its alphanumeric sender ID |
+| dest_masked | string | req | E.164 MSISDN, last 4 digits masked. With number portability the prefix does not identify the network |
+| mcc_mnc | string | req | Destination network from the HLR / number lookup; maps to `network_group` via the deck |
+| smpp_connection | string | req | Our egress bind; maps to the carrier via `connection_map` |
+| supplier_id | string | req | From `connection_map` |
+| submit_status | string | req | SMPP `command_status`; always `0x00000000` for stored records (rejected submits go to `rejects.csv`) |
+| supplier_msg_id | string | req | Carrier's message ID from `submit_sm_resp`; duplicates detected on this, and the key to match carrier detail |
+| segments | int | req | Billable units (1 per part of a concatenated message) |
+| data_coding | string | req | `0` GSM-7, `8` UCS-2 |
+| dlr_stat / dlr_err / dlr_received_at | enum / string / datetime | — | `DELIVRD`, `UNDELIV`, `EXPIRED`, blank = no receipt. Informational: billing basis is `submitted` (clause 4.2) |
 | mediation_batch_id | string | req | |
 
-`daily_summary`: `date_utc, egress_carrier_id, destination_group, calls, duration_sec, billable_minutes, source_batch_ids`. `billable_minutes` applies the agreement's increment per call (60/60 → `ceil(duration_sec/60)` for `duration_sec > 0`). Must equal the sum over CDRs exactly.
+`daily_summary`: `date_utc, supplier_id, network_group, messages, billable_segments, delivered, undelivered, expired, no_receipt, source_batch_ids`. Must equal the sum over message records exactly.
 
-`reject`: `reject_id, cdr_raw_ref, start_time_utc, duration_sec, b_number, egress_trunk, reject_reason (enum: UNMAPPED_TRUNK, MALFORMED, DUPLICATE, ZERO_DURATION), rejected_at, reprocessed (bool)`.
+`reject`: `reject_id, raw_ref, submitted_at_utc, segments, dest_masked, mcc_mnc, smpp_connection, submit_status, supplier_msg_id, reject_reason (enum: UNMAPPED_CONNECTION, MALFORMED, DUPLICATE, SUBMIT_FAILED), rejected_at, reprocessed (bool)`. `SUBMIT_FAILED` rows have a non-zero `submit_status` and no `supplier_msg_id`.
 
-`trunk_map`: `trunk_id, carrier_id, direction, valid_from, valid_to`.
+`connection_map`: `connection_id, system_id, supplier_id, direction, valid_from, valid_to`.
 
 ### S4 Rated charges (rating engine)
 
@@ -201,19 +204,19 @@ Files: `rating/runs/<run_id>.json` (run header) and `rating/runs/<run_id>/lines.
 
 `rating run`: `run_id, period_start, period_end, carrier_id, agreement_id, agreement_version, decks_used (deck_id[]), run_at, engine_version, status (complete|partial)`.
 
-`rated line` (daily per destination group per rate; CDR-level rating is out of scope for the prototype because daily totals are exact under per-call increments):
+`rated line` (daily per network MCC-MNC per rate; message-level rating is out of scope for the prototype because daily totals are exact under per-segment pricing):
 
 | Column | Type | Req | Notes |
 |---|---|---|---|
 | run_id | string | req | |
 | date_local | date | req | In agreement `billing_timezone` |
-| destination_group | string | req | |
+| network_group | string | req | |
+| mcc_mnc | string | req | Deck row key used, e.g. `334990` |
 | deck_id | string | req | Deck version used |
-| dial_code_rule | string | req | Deck row key used, e.g. `521` |
 | rate | decimal(4) | req | |
-| calls | int | req | |
-| billable_minutes | int | req | |
-| amount | decimal(2) | req | `billable_minutes × rate`, half-up to 2 dp |
+| messages | int | req | |
+| billable_segments | int | req | |
+| amount | decimal(2) | req | `billable_segments × rate`, half-up to 2 dp |
 | currency | string | req | |
 
 Expected charge for the period = sum of `amount` over the run. This is what step 1 compares against.
@@ -223,9 +226,9 @@ Expected charge for the period = sum of `amount` over the run. This is what step
 Files per invoice:
 - `invoices/inbox/<invoice_id>/envelope.json` delivery metadata (as if an email)
 - `invoices/inbox/<invoice_id>/invoice.json` UBL-lite header + lines
-- `invoices/inbox/<invoice_id>/summary.csv` the carrier's destination summary (what carriers actually send)
+- `invoices/inbox/<invoice_id>/summary.csv` the carrier's summary by destination network (what carriers actually send)
 - `invoices/inbox/<invoice_id>/invoice.md` human-readable render of the PDF
-- `invoices/inbox/<invoice_id>/cdr_detail.csv.gz` optional, only if the carrier supplied detail
+- `invoices/inbox/<invoice_id>/message_detail.csv.gz` optional, only if the carrier supplied message detail records (MDR)
 
 `envelope`: `message_id, from, to, received_at, subject, attachments[]`.
 
@@ -243,7 +246,7 @@ Files per invoice:
 | currency | string | req | |
 | line_count | int | req | |
 | subtotal | decimal(2) | req | Sum of line amounts |
-| tax_total | decimal(2) | req | 0.00 for wholesale international voice in the seed |
+| tax_total | decimal(2) | req | 0.00 for wholesale international SMS in the seed |
 | total | decimal(2) | req | |
 
 `invoice line` (also the shape of `summary.csv`):
@@ -251,17 +254,17 @@ Files per invoice:
 | Field | Type | Req | Notes |
 |---|---|---|---|
 | line_no | int | req | |
-| destination | string | req | Carrier's own label |
-| destination_group | string | — | Carrier invoices do **not** carry our key; mapping happens in step 3 via dial code or a label map |
-| dial_codes | string | — | Pipe-separated, if carrier lists them |
-| service | enum | req | |
+| destination | string | req | Carrier's own network label |
+| network_group | string | — | Carrier invoices do **not** carry our key; mapping happens in step 3 via MCC-MNC or a label map |
+| mcc_mnc | string | — | Pipe-separated, if carrier lists them |
+| service | enum | req | `sms` |
 | period_start / period_end | date | req | A line can cover a sub-period |
-| calls | int | req | |
-| minutes | int | req | Billable minutes as carrier computed |
+| messages | int | req | Messages accepted |
+| segments | int | req | Billable segments as carrier computed |
 | rate | decimal(4) | req | |
 | amount | decimal(2) | req | |
 
-`carrier cdr_detail` (when supplied): `carrier_cdr_id, start_time_local, duration_sec, billed_minutes, b_number_masked, destination, rate, amount, our_trunk_id`.
+`carrier message_detail` (when supplied): `carrier_record_id, submit_time_local, supplier_msg_id, dest_masked, mcc_mnc, destination, segments, rate, amount, our_connection_id, dlr_status`. Rows match our records on `supplier_msg_id`.
 
 ### S6 Case store (TMF621-shaped)
 
@@ -294,7 +297,7 @@ Files: `cases/<case_id>.json`, rewritten on every change; `cases/<case_id>.histo
 
 Files: `carrier-portal/submissions/<claim_id>.json`, `carrier-portal/responses/<claim_id>.json`. Fields follow the carrier dispute processes in the research (one product and one bill period per dispute).
 
-`submission`: `claim_id (assigned by stub), our_reference (case_id), account_id, invoice_id, product, bill_period, disputed_amount, reason_code (RATE_BEFORE_EFFECTIVE|RATE_MISMATCH|VOLUME|DUPLICATE|OTHER), billed_rate, correct_rate, from_date, through_date, supporting_files[], submitted_by, submitted_at`.
+`submission`: `claim_id (assigned by stub), our_reference (case_id), account_id, invoice_id, product, bill_period, disputed_amount, reason_code (RATE_BEFORE_EFFECTIVE|RATE_MISMATCH|VOLUME|DUPLICATE|BILLING_BASIS|OTHER), billed_rate, correct_rate, from_date, through_date, supporting_files[], submitted_by, submitted_at`.
 
 `response`: `claim_id, status (acknowledged|in_review|resolved), outcome (customer_favour|carrier_favour|partial|null), credit_amount, credit_from, credit_through, message, responded_at, attachments[]`.
 
@@ -328,72 +331,75 @@ Rule enforced by the ledger writer: an amount may only appear in `kind=calc` ent
 |---|---|---|
 | Period alignment | invoice header vs rating run vs usage dates | invoice period not fully covered by a complete rating run |
 | Currency | invoice, agreement, deck rows, rated lines | any mismatch with agreement currency |
-| Units | invoice minutes vs agreement increment | carrier minutes non-integer under 60/60 |
-| Totals | invoice lines → subtotal → total; rated lines → run total; CDRs → daily summary | any sum off by more than 0.01 |
+| Units | invoice segments vs agreement billing unit | carrier segments non-integer, or fewer segments than messages |
+| Totals | invoice lines → subtotal → total; rated lines → run total; message records → daily summary | any sum off by more than 0.01 |
 | Required fields | all `req` fields above | any missing in invoice header or agreement |
-| Duplicates | `call_id` in CDRs; `line_no` in invoice | duplicates in invoice lines (CDR duplicates are flagged, not blocking) |
+| Duplicates | `supplier_msg_id` in message records; `line_no` in invoice | duplicates in invoice lines (message duplicates are flagged, not blocking) |
 | Effective dates | deck rows used by rating vs `contracted_rate` rule | a rated line used a row not effective on its date |
 | Rejects | `usage/rejects.csv` for the period | never blocking; unreprocessed rejects to this carrier are flagged for step 4 |
+| Delivery receipts | `dlr_stat` vs agreement `billing_basis` | never blocking; under `submitted` basis undelivered messages are billable and must not be disputed |
 
 ## 6. Seeded scenario: the 8% invoice
 
-Parties: buyer **Orion Voice Exchange** (our customer's self-managed wholesale team, party `ORX`), seller **Northbridge Carrier Services** (party `NBCS`). Agreement `AGR-NB-2025-014`, voice termination, USD, monthly, `billing_timezone` UTC, 60/60, increase notice 7 days, dispute window 14 days, payment 30 days, `dispute_min_amount` 50.00. Key clauses: **6.3** rate change notice, **8.2** dispute minimum amount.
+Parties: buyer **Orion Messaging Exchange** (our customer's self-managed wholesale messaging team, party `ORX`), seller **Northbridge Carrier Services** (party `NBCS`). Agreement `AGR-NB-2025-014` (carrier ref `NBCS-SMS-2025-0117`), A2P SMS termination, USD, monthly, `billing_timezone` UTC, billed per segment on submit, increase notice 7 days, dispute window 14 days, payment 30 days, `dispute_min_amount` 50.00. Key clauses: **4.2** billing unit and basis, **6.3** rate change notice, **8.2** dispute minimum amount.
 
 Billing period 2026-09-01 to 2026-09-30. Sim clock starts 2026-10-05T09:00Z when invoice `NB-INV-2026-09-0412` (issue date 2026-10-05) lands in the inbox. Dispute deadline 2026-10-19.
 
 **Rate decks.**
-- `NB-VOICE-2026-08-01` (full, loaded 2026-07-24): all five groups at the "old" rates below.
-- `NB-VOICE-2026-09-07` (partial, notice `RN-NB-2026-0907` sent 2026-09-07T14:00Z): Mexico Mobile `INCREASE` 0.0120 → 0.0185, `effective_date` **2026-09-15**. Seven full days of notice end 2026-09-14T14:00Z, so the increase is valid from 2026-09-15.
+- `NB-SMS-2026-08-01` (full, loaded 2026-07-24): all six networks at the "old" rates below.
+- `NB-SMS-2026-09-07` (partial, notice `RN-NB-2026-0907` sent 2026-09-07T14:00Z): Mexico - Altavia Movil `INCREASE` 0.0120 → 0.0185, `effective_date` **2026-09-15**. Seven full days of notice end 2026-09-14T14:00Z, so the increase is valid from 2026-09-15.
 
-| destination_group | Destination | dial_code(s) | Rate | 
+| network_group | Destination network | MCC-MNC | Rate per segment |
 |---|---|---|---|
-| MX-MOB | Mexico Mobile | 521 | 0.0120 until 09-14, 0.0185 from 09-15 |
-| MX-FIX | Mexico Fixed | 52 | 0.0060 |
-| CO-MOB | Colombia Mobile | 573 | 0.0150 |
-| BR-MOB | Brazil Mobile | 55119, 55219 | 0.0210 |
-| GT-MOB | Guatemala Mobile | 5025 | 0.0850 |
+| MX-ALT | Mexico - Altavia Movil | 334990 | 0.0120 until 09-14, 0.0185 from 09-15 |
+| MX-VRD | Mexico - Verdemovil | 334991 | 0.0060 |
+| CO-AND | Colombia - Andina Movil | 732990 | 0.0150 |
+| BR-CRZ | Brazil - Cruzeiro Movel | 724990, 724991 (legacy MNC) | 0.0210 |
+| GT-QTZ | Guatemala - Quetzal Movil | 704990 | 0.0850 |
 
-**Internal records (our side, correct).**
+**Internal records (our side, correct).** About 1.35 million messages, 1.18 segments per message on average.
 
-| Group | Billable minutes | Rate | Expected (USD) |
+| Group | Billable segments | Rate | Expected (USD) |
 |---|---|---|---|
-| MX-MOB 09-01…09-14 | 280,000 | 0.0120 | 3,360.00 |
-| MX-MOB 09-15…09-30 | 320,000 | 0.0185 | 5,920.00 |
-| MX-FIX | 400,000 | 0.0060 | 2,400.00 |
-| CO-MOB | 300,000 | 0.0150 | 4,500.00 |
-| BR-MOB | 250,000 | 0.0210 | 5,250.00 |
-| GT-MOB | 42,000 | 0.0850 | 3,570.00 |
+| MX-ALT 09-01…09-14 | 280,000 | 0.0120 | 3,360.00 |
+| MX-ALT 09-15…09-30 | 320,000 | 0.0185 | 5,920.00 |
+| MX-VRD | 400,000 | 0.0060 | 2,400.00 |
+| CO-AND | 300,000 | 0.0150 | 4,500.00 |
+| BR-CRZ | 250,000 | 0.0210 | 5,250.00 |
+| GT-QTZ | 42,000 | 0.0850 | 3,570.00 |
 | **Total (rating run `RUN-2026-09`)** | 1,592,000 | | **25,000.00** |
 
 **Carrier invoice `NB-INV-2026-09-0412`.**
 
-| Line | Destination | Minutes | Rate | Amount |
+| Line | Destination network | Segments | Rate | Amount |
 |---|---|---|---|---|
-| 1 | Mexico Mobile (09-01…09-30) | 600,000 | 0.0185 | 11,100.00 |
-| 2 | Mexico Fixed | 400,000 | 0.0060 | 2,400.00 |
-| 3 | Colombia Mobile | 312,000 | 0.0150 | 4,680.00 |
-| 4 | Brazil Mobile | 250,000 | 0.0210 | 5,250.00 |
-| 5 | Guatemala Mobile | 42,000 | 0.0850 | 3,570.00 |
+| 1 | Mexico - Altavia Movil (09-01…09-30) | 600,000 | 0.0185 | 11,100.00 |
+| 2 | Mexico - Verdemovil | 400,000 | 0.0060 | 2,400.00 |
+| 3 | Colombia - Andina Movil | 312,000 | 0.0150 | 4,680.00 |
+| 4 | Brazil - Cruzeiro Movel | 250,000 | 0.0210 | 5,250.00 |
+| 5 | Guatemala - Quetzal Movil | 42,000 | 0.0850 | 3,570.00 |
 | | **Total** | 1,604,000 | | **27,000.00** |
 
 **Variance:** 2,000.00, which is 8.00% of expected and 7.41% of invoiced, above the 2% case threshold, so step 1 opens `CASE-0001`.
 
 **Two planted causes.**
-1. **Rate applied before its effective date (supported).** Line 1 bills all 600,000 Mexico Mobile minutes at 0.0185, but 280,000 of them fall on 09-01…09-14, before the increase took effect. Supported dispute = 280,000 × (0.0185 − 0.0120) = **1,820.00**. Evidence: deck row `NB-VOICE-2026-09-07/row/521`, notice `RN-NB-2026-0907`, contract clause 6.3 (`#clause-6.3`), daily usage for MX-MOB, invoice line 1.
-2. **Volume gap on Colombia Mobile (explained by our own records).** The carrier bills 12,000 more minutes (180.00). Mediation rejected 4,000 calls / 12,000 billable minutes to CO-MOB between 09-21 and 09-30 with `UNMAPPED_TRUNK` on new egress trunk `TRK-NB-07`, which `trunk_map` only gained on 2026-10-01. So the carrier's charge is legitimate and our expected total is understated. This tests that the system admits an own-side fault instead of disputing it.
+1. **Rate applied before its effective date (supported).** Line 1 bills all 600,000 Altavia segments at 0.0185, but 280,000 of them were submitted on 09-01…09-14, before the increase took effect. Supported dispute = 280,000 × (0.0185 − 0.0120) = **1,820.00**. Evidence: deck row `NB-SMS-2026-09-07/row/334990`, notice `RN-NB-2026-0907`, contract clause 6.3 (`#clause-6.3`), daily usage for MX-ALT, invoice line 1.
+2. **Volume gap on Colombia - Andina Movil (explained by our own records).** The carrier bills 12,000 more segments (180.00). Mediation rejected about 10,100 messages / 12,000 segments to 732990 between 09-21 and 09-30 with `UNMAPPED_CONNECTION` on the new SMPP bind `SMPP-NB-07`, which `connection_map` only gained on 2026-10-01. So the carrier's charge is legitimate and our expected total is understated. This tests that the system admits an own-side fault instead of disputing it.
 
-**Expected outcome (base scenario).** Step 2 flags the unreprocessed rejects (non-blocking). Step 3 finds a rate exception on MX-MOB (1,820.00) and a volume exception on CO-MOB (180.00). Step 4 classifies the MX-MOB cause as fact + calculation, and the CO-MOB gap as a fact explained by `usage/rejects.csv`. Step 5: supported 1,820.00, explained in carrier's favour 180.00, unresolved 0.00. Step 6 recommends **partial dispute of 1,820.00** and paying the undisputed 25,180.00 by 2026-11-04, plus an internal note to fix the trunk map. Analyst approves; S7 submission with `reason_code RATE_BEFORE_EFFECTIVE`, `from_date 2026-09-01`, `through_date 2026-09-14`. Scripted carrier response at sim +6 days: `customer_favour`, credit 1,820.00.
+**Distractors.** About 5% of messages have an `UNDELIV`, `EXPIRED` or missing receipt; they are billable on both sides under clause 4.2 and must not be disputed. 25 `DUPLICATE` and 60 `SUBMIT_FAILED` rejects were dropped correctly by mediation. Brazil has two MCC-MNCs under one network group and one invoice line.
+
+**Expected outcome (base scenario).** Step 2 flags the unreprocessed rejects (non-blocking). Step 3 finds a rate exception on MX-ALT (1,820.00) and a volume exception on CO-AND (180.00). Step 4 classifies the MX-ALT cause as fact + calculation, and the CO-AND gap as a fact explained by `usage/rejects.csv`. Step 5: supported 1,820.00, explained in carrier's favour 180.00, unresolved 0.00. Step 6 recommends **partial dispute of 1,820.00** and paying the undisputed 25,180.00 by 2026-11-04, plus an internal note to fix the connection map. Analyst approves; S7 submission with `reason_code RATE_BEFORE_EFFECTIVE`, `from_date 2026-09-01`, `through_date 2026-09-14`. Scripted carrier response at sim +6 days: `customer_favour`, credit 1,820.00.
 
 **Variants.** Each variant is an overlay on base (see section 9). Ground truth per scenario is in `dataset/answer-keys/<id>.json`, which the agents must not read.
 
 | ID | Edit to base | Exercises | Expected decision |
 |---|---|---|---|
-| V1 | Remove the CO-MOB rows from `rejects.csv` | Unexplained but immaterial volume gap: 180.00 = 0.67% of invoice < the 1% evidence threshold | Partial dispute 1,820.00; 180.00 noted as unresolved, below threshold |
-| V2 | V1, and carrier bills 40,000 extra CO-MOB minutes (340,000 total; 600.00; invoice 27,420.00) | Unresolved 600.00 = 2.19% > 1% | Request evidence: carrier CDR detail for CO-MOB. On arrival (`cdr_detail.csv.gz` at sim +3 days) the case re-enters step 2. The detail shows 12,000 min on our trunk TRK-NB-07 (180.00, carrier's favour) and 28,000 min of duplicated carrier records with the same start, number and duration (420.00, reason `DUPLICATE`). After evidence: **partial dispute 2,240.00**, unresolved 0.00 |
-| V3 | Notice `RN-NB-2026-0907` sent 2026-09-12 instead of 09-07, deck still says effective 09-15 | Notice period breach: increase only effective from 09-20 under clause 6.3. Internal rating applies 6.3, so expected is 24,350.00 and the deck's 09-15 is the carrier's error | **Partial dispute 2,470.00** (380,000 min on 09-01…09-19 × 0.0065) |
-| V4 | Delete deck `NB-VOICE-2026-09-07` from the store | Missing record | Step 2 blocks; request evidence (rate notice and deck) from internal pricing team |
-| V5 | Invoice line 4 amount 5,520.00 but subtotal still sums to 27,000.00 | Totals don't sum | Step 2 blocks; request corrected invoice from carrier |
-| V6 | Invoice equals 25,000.00 exactly (CO-MOB billed at 300,000 min) and the CO-MOB rejects are removed so internal records stay consistent | Below threshold | No case opens |
+| V1 | Remove the CO-AND rows from `rejects.csv` | Unexplained but immaterial volume gap: 180.00 = 0.67% of invoice < the 1% evidence threshold | Partial dispute 1,820.00; 180.00 noted as unresolved, below threshold |
+| V2 | V1, and carrier bills 40,000 extra CO-AND segments (340,000 total; 600.00; invoice 27,420.00) | Unresolved 600.00 = 2.19% > 1% | Request evidence: carrier message detail for CO-AND. On arrival (`message_detail.csv.gz` at sim +3 days) the case re-enters step 2. The detail shows 12,000 segments on our bind SMPP-NB-07 (180.00, carrier's favour) and 28,000 segments of carrier rows repeating another row's `supplier_msg_id` (420.00, reason `DUPLICATE`). After evidence: **partial dispute 2,240.00**, unresolved 0.00 |
+| V3 | Notice `RN-NB-2026-0907` sent 2026-09-12 instead of 09-07, deck still says effective 09-15 | Notice period breach: increase only effective from 09-20 under clause 6.3. Internal rating applies 6.3, so expected is 24,350.00 and the deck's 09-15 is the carrier's error | **Partial dispute 2,470.00** (380,000 segments on 09-01…09-19 × 0.0065) |
+| V4 | Delete deck `NB-SMS-2026-09-07` from the store | Missing record | Step 2 blocks; request evidence (rate notice and deck) from internal pricing team |
+| V5 | Invoice line 4 amount 5,520.00 but subtotal still says 27,000.00 | Totals don't sum | Step 2 blocks; request corrected invoice from carrier |
+| V6 | Invoice equals 25,000.00 exactly (CO-AND billed at 300,000 segments) and the CO-AND rejects are removed so internal records stay consistent | Below threshold | No case opens |
 
 ## 7. Adapter interface
 
@@ -405,12 +411,12 @@ contracts.get_clause(agreement_id, clause_id) -> Clause
 contracts.find_by_carrier(carrier_id, on_date) -> Agreement
 
 rates.list_decks(rate_schedule_ref) -> [DeckHistoryRow]
-rates.get_deck_rows(deck_id, destination_group=None) -> [DeckRow]
-rates.contracted_rate(rate_schedule_ref, dial_code, at_utc) -> DeckRow   # implements the rule in S2
+rates.get_deck_rows(deck_id, network_group=None) -> [DeckRow]
+rates.contracted_rate(rate_schedule_ref, mcc_mnc, at_utc) -> DeckRow   # implements the rule in S2
 rates.list_notices(carrier_id, since) -> [Notice]
 
 usage.daily_summary(carrier_id, start, end) -> [DailyRow]
-usage.cdrs(carrier_id, start, end, destination_group=None) -> iterator[CDR]
+usage.messages(carrier_id, start, end, network_group=None) -> iterator[Message]
 usage.rejects(carrier_id, start, end) -> [Reject]
 
 rating.get_run(carrier_id, period) -> RatingRun
@@ -418,7 +424,7 @@ rating.lines(run_id) -> [RatedLine]
 
 invoices.poll_inbox(since) -> [Envelope]
 invoices.get_invoice(invoice_id) -> Invoice  # header + lines
-invoices.get_carrier_detail(invoice_id) -> iterator[CarrierCDR] | None
+invoices.get_carrier_detail(invoice_id) -> iterator[CarrierMessageRecord] | None
 
 cases.create(case) / cases.update(case_id, patch) / cases.get(case_id) / cases.add_note(...)
 ledger.append(entry) / ledger.read(case_id)
@@ -445,11 +451,11 @@ events:
     action: deliver_invoice
     invoice_id: NB-INV-2026-09-0412
   - on: evidence_request            # V2 only
-    match: {to: carrier, item: cdr_detail, destination_group: CO-MOB}
+    match: {to: carrier, item: message_detail, network_group: CO-AND}
     after: P3D
     action: deliver_file
-    from: staged/invoices/inbox/NB-INV-2026-09-0412/cdr_detail.csv.gz   # inside the variant folder
-    path: invoices/inbox/NB-INV-2026-09-0412/cdr_detail.csv.gz          # where it appears in the data root
+    from: staged/invoices/inbox/NB-INV-2026-09-0412/message_detail.csv.gz   # inside the variant folder
+    path: invoices/inbox/NB-INV-2026-09-0412/message_detail.csv.gz          # where it appears in the data root
   - on: portal_submit
     after: P2D
     action: portal_response
@@ -480,7 +486,7 @@ assurance-prototype/dataset/
   sim-data/base/                          full data root
     contracts/agreements/  contracts/documents/
     rates/decks/  rates/deck_history.csv  rates/notices/
-    usage/cdrs/  usage/daily_summary.csv  usage/rejects.csv  usage/trunk_map.csv
+    usage/messages/  usage/daily_summary.csv  usage/rejects.csv  usage/connection_map.csv
     rating/runs/
     invoices/inbox/<invoice_id>/
     cases/  ledger/  carrier-portal/      empty stores the prototype writes into
@@ -494,4 +500,4 @@ assurance-prototype/dataset/
 
 **Resolving a path in a variant.** Look in the variant folder first; if absent, fall back to base, unless the path is listed in `deleted`, in which case it does not exist. Adapters implement this once (`verify_dataset.py` has a short `path()` helper), so agents never see the overlay mechanics.
 
-Base holds about 530,600 CDRs in 30 gzipped daily files (about 18 MB).
+Base holds about 1.35 million message records in 30 gzipped daily files (about 41 MB).
