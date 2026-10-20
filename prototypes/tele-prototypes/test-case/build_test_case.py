@@ -9,7 +9,7 @@ The bulk files are written at industry size:
   S3  30 daily mediation message files (~1.35M messages with delivery receipts) + full reject log
   S5  carrier message detail (MDR) for the whole month, 4 gzipped pipe-delimited files
 
-Run:  python3 build_test_case.py      -> writes ./out/ (everything) and "./P1 SMS Test Case - large files.zip" (files > 500 KB)
+Run:  python3 build_test_case.py      -> writes ./out/ (everything) and "./P1 SMS Test Case - large files.zip" (files > 25 KB)
 Stdlib only, deterministic.
 """
 import base64
@@ -33,7 +33,7 @@ RAW = HERE.parent / "raw-examples" / "out"
 KEYS = HERE.parent / "dataset" / "answer-keys"
 OUT = HERE / "out"
 ZIP = HERE / "P1 SMS Test Case - large files.zip"
-BIG = 500_000  # files above this size cannot go through the text-only Dropbox connector; they ship in ZIP
+BIG = 25_000  # files above this size cannot reliably go through the text-only Dropbox connector; they ship in ZIP
 sys.path.insert(0, str(HERE.parent / "raw-examples"))
 from build_examples import Pdf  # noqa: E402  minimal ASCII PDF writer
 
@@ -590,9 +590,9 @@ def main():
     print(checks(deck_rows, totals, n))
     big = [p for p in sorted(OUT.rglob("*")) if p.is_file() and p.stat().st_size > BIG]
     msg = [p for p in big if p.parent.name == "messages"]
-    big_rows = "%d files, %.0f MB in total (compressed):\n\n| File | Size |\n|---|---:|\n" % (
-        len(big), sum(p.stat().st_size for p in big) / 1e6) + "".join(
-        "| %s | %.1f MB |\n" % (p.relative_to(OUT), p.stat().st_size / 1e6) for p in big if p not in msg) + \
+    big_rows = "These are not in the Dropbox folder itself; they come in the zip \"%s\".\n%d files, %.0f MB in total (compressed):\n\n| File | Size |\n|---|---:|\n" % (
+        ZIP.name, len(big), sum(p.stat().st_size for p in big) / 1e6) + "".join(
+        "| %s | %.2f MB |\n" % (p.relative_to(OUT), p.stat().st_size / 1e6) for p in big if p not in msg) + \
         "| %s/messages/ (%d daily files) | %.1f MB |\n" % (S3, len(msg), sum(p.stat().st_size for p in msg) / 1e6)
     daily = read_csv("usage/daily_summary.csv")
     rejects = read_csv("usage/rejects.csv")
