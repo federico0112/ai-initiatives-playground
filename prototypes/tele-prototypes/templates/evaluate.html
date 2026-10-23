@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Answer Key Scores{% endblock %}
+{% block body %}
+<header><a href="/">All scenarios</a><h1>Scores against the answer keys</h1></header>
+{% for r in rows %}
+<div class="card">
+<h2><span class="mono">{{ r.id }}</span> · {{ r.passed }}/{{ r.checks|length }} checks
+<span class="chip {{ 'pass' if r.passed == r.checks|length else 'block' }}">{{ 'pass' if r.passed == r.checks|length else 'fail' }}</span></h2>
+<details><summary>Checks</summary>
+<table>{% for name, ok, detail in r.checks %}
+<tr><td><span class="chip {{ 'pass' if ok else 'block' }}">{{ 'pass' if ok else 'fail' }}</span></td><td>{{ name }}</td>
+<td class="muted mono">{{ '' if ok else detail }}</td></tr>{% endfor %}</table>
+</details>
+</div>
+{% endfor %}
+{% endblock %}
