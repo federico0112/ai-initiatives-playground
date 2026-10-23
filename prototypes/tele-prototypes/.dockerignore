@@ -1,0 +1,7 @@
+dataset/sim-data/
+dataset/answer-keys/
+raw-examples/out/
+test-case/out/
+test-case/*.zip
+**/__pycache__/
+.pytest_cache/
