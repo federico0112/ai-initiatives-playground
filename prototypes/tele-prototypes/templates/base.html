@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Invoice Dispute Agents{% endblock %}</title>
+<style>
+:root {
+  --bg: #F5F7FA; --surface: #FFFFFF; --fg: #18202B; --muted: #5A6577; --line: #D3D9E2;
+  --rules: #2C68A8; --rules-soft: #E3EDF8; --agent: #8A5A00; --agent-soft: #F7ECD6;
+  --analyst: #7A3A9A; --analyst-soft: #F1E4F7; --ok: #23786A; --ok-soft: #DDF1EC;
+  --warn: #8A5A00; --warn-soft: #F7ECD6; --bad: #A33A3A; --bad-soft: #F8E1E1;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #10151C; --surface: #18202A; --fg: #E5E9EF; --muted: #9AA5B5; --line: #34414F;
+  --rules: #84B6EA; --rules-soft: #1C2D42; --agent: #E3B25A; --agent-soft: #3A2D14;
+  --analyst: #CC9DE8; --analyst-soft: #33213E; --ok: #6DC6B2; --ok-soft: #15322D;
+  --warn: #E3B25A; --warn-soft: #3A2D14; --bad: #F08A8A; --bad-soft: #3D1E1E; color-scheme: dark } }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, "Segoe UI", sans-serif; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 28px 16px 64px; display: flex; flex-direction: column; gap: 22px; }
+a { color: var(--rules); }
+h1 { font-size: 26px; margin: 0; } h2 { font-size: 18px; margin: 0 0 10px; } h3 { font-size: 15px; margin: 14px 0 6px; }
+.muted { color: var(--muted); } .mono { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; vertical-align: top; padding: 7px 9px; border-bottom: 1px solid var(--line); }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chip { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
+.rules { background: var(--rules-soft); color: var(--rules); } .agent { background: var(--agent-soft); color: var(--agent); }
+.analyst { background: var(--analyst-soft); color: var(--analyst); }
+.pass, .match, .resolved, .supported { background: var(--ok-soft); color: var(--ok); }
+.flag, .carrier_favour, .awaiting_evidence, .analyst_review, .approved_for_payment, .submitted { background: var(--warn-soft); color: var(--warn); }
+.block, .exception, .unresolved, .no_case { background: var(--bad-soft); color: var(--bad); }
+.figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.fig { border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
+.fig b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; }
+.fig span { font-size: 12px; color: var(--muted); }
+form.gate { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 10px; }
+form.gate label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 3px; }
+input, button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+button { cursor: pointer; background: var(--analyst); color: #fff; border-color: var(--analyst); }
+button.secondary { background: var(--surface); color: var(--analyst); }
+pre { white-space: pre-wrap; font-size: 12.5px; margin: 0; }
+ol.timeline { margin: 0; padding-left: 20px; } ol.timeline li { margin: 2px 0; }
+details summary { cursor: pointer; font-weight: 600; }
+</style>
+</head>
+<body><div class="wrap">{% block body %}{% endblock %}</div></body>
+</html>

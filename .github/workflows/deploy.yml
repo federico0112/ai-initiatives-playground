@@ -35,7 +35,10 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "prototypes=[\"${{ github.event.inputs.prototype }}\"]" >> $GITHUB_OUTPUT
           else
-            CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '^prototypes/' | cut -d'/' -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            # Only folders with a Dockerfile are deployable apps; skip docs/data-only folders
+            CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '^prototypes/' | cut -d'/' -f2 | sort -u \
+              | while read -r p; do if [ -f "prototypes/$p/Dockerfile" ]; then echo "$p"; fi; done \
+              | jq -R -s -c 'split("\n") | map(select(length > 0))')
             echo "prototypes=$CHANGED" >> $GITHUB_OUTPUT
           fi
 

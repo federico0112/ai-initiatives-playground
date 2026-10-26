@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Invoice Dispute Resolution Flow</title>
+<!-- Copy of the published artifact https://claude.ai/artifact/XLPHPA893GkoasUvaCZiqi -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single reading column; the flow figure is the centerpiece, step detail and rules follow as reference tables. */
+:root {
+  --bg: #F5F7FA; --surface: #FFFFFF; --fg: #18202B; --muted: #5A6577; --line: #C7CFDA;
+  --rules: #2C68A8; --rules-soft: #E3EDF8;
+  --agent: #8A5A00; --agent-soft: #F7ECD6;
+  --analyst: #7A3A9A; --analyst-soft: #F1E4F7;
+  --ledger: #23786A; --ledger-soft: #DDF1EC;
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #10151C; --surface: #18202A; --fg: #E5E9EF; --muted: #9AA5B5; --line: #34414F;
+  --rules: #84B6EA; --rules-soft: #1C2D42; --agent: #E3B25A; --agent-soft: #3A2D14;
+  --analyst: #CC9DE8; --analyst-soft: #33213E; --ledger: #6DC6B2; --ledger-soft: #15322D; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #10151C; --surface: #18202A; --fg: #E5E9EF; --muted: #9AA5B5; --line: #34414F;
+  --rules: #84B6EA; --rules-soft: #1C2D42; --agent: #E3B25A; --agent-soft: #3A2D14;
+  --analyst: #CC9DE8; --analyst-soft: #33213E; --ledger: #6DC6B2; --ledger-soft: #15322D; color-scheme: dark }
+
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 64px; display: flex; flex-direction: column; gap: 36px; }
+h1, h2 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(26px, 4vw, 36px); font-weight: 800; }
+h2 { font-size: 20px; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+header { display: flex; flex-direction: column; gap: 10px; }
+.lede { color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 14px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chip { font-family: var(--f-mono); font-size: 11px; padding: 2px 8px; border-radius: 3px; font-weight: 500; }
+.c-rules { background: var(--rules-soft); color: var(--rules); }
+.c-agent { background: var(--agent-soft); color: var(--agent); }
+.c-analyst { background: var(--analyst-soft); color: var(--analyst); }
+.c-ledger { background: var(--ledger-soft); color: var(--ledger); }
+.swatch-dash { width: 22px; height: 12px; border: 1.5px dashed var(--muted); border-radius: 2px; }
+
+figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding-block: 18px; padding-inline: 12px; display: flex; flex-direction: column; gap: 12px; }
+.scroll { overflow-x: auto; }
+svg.flow { display: block; width: 100%; min-width: 720px; height: auto; color: var(--fg); font-family: var(--f-body); }
+figcaption { font-size: 13px; color: var(--muted); padding-inline: 8px; max-width: 80ch; }
+
+/* SVG parts */
+.box { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; }
+.box-ext { fill: var(--surface); stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.box-gate { fill: var(--analyst-soft); stroke: var(--analyst); stroke-width: 2; }
+.box-out { fill: var(--surface); stroke: var(--fg); stroke-width: 1.6; }
+.rail { fill: var(--ledger-soft); stroke: var(--ledger); stroke-width: 1.2; }
+.t-title { fill: var(--fg); font-size: 14px; font-weight: 600; }
+.t-sub { fill: var(--muted); font-size: 12px; }
+.t-label { fill: var(--muted); font-size: 11.5px; font-style: italic; }
+.t-num { fill: var(--muted); font-family: var(--f-mono); font-size: 12px; }
+.t-rail { fill: var(--ledger); font-family: var(--f-display); font-size: 15px; font-weight: 700; letter-spacing: 0.06em; }
+.t-rail-sub { fill: var(--ledger); font-size: 11.5px; }
+.flowline { stroke: var(--fg); stroke-width: 1.4; fill: none; }
+.branch { stroke: var(--muted); stroke-width: 1.4; fill: none; stroke-dasharray: 6 4; }
+.loop-analyst { stroke: var(--analyst); stroke-width: 1.4; fill: none; stroke-dasharray: 6 4; }
+.cite { stroke: var(--ledger); stroke-width: 1.2; fill: none; stroke-dasharray: 3 3; }
+.mk-fg { fill: var(--fg); } .mk-muted { fill: var(--muted); } .mk-analyst { fill: var(--analyst); } .mk-ledger { fill: var(--ledger); }
+.dot { fill: var(--ledger); }
+.b-rules rect { fill: var(--rules-soft); } .b-rules text { fill: var(--rules); }
+.b-agent rect { fill: var(--agent-soft); } .b-agent text { fill: var(--agent); }
+.b-analyst rect { fill: var(--surface); } .b-analyst text { fill: var(--analyst); }
+.badge text { font-family: var(--f-mono); font-size: 10.5px; font-weight: 500; }
+.opt rect { fill: var(--bg); stroke: var(--line); }
+.opt text { fill: var(--fg); font-size: 11.5px; }
+.opt-ev rect { fill: var(--bg); stroke: var(--muted); stroke-dasharray: 3 2; }
+
+/* Tables */
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13.5px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: none; }
+th { font-family: var(--f-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 500; background: var(--bg); }
+td.step { white-space: nowrap; font-weight: 600; }
+td.step .n { font-family: var(--f-mono); color: var(--muted); margin-right: 6px; font-weight: 400; }
+td .chip { display: inline-block; margin-top: 4px; }
+
+.classes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.cls { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cls h3 { margin: 0; font-family: var(--f-display); font-size: 15px; }
+.cls p { font-size: 13.5px; color: var(--muted); }
+.cls .tag { font-family: var(--f-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+.tag.yes { color: var(--ledger); } .tag.no { color: var(--agent); }
+
+ol.changes, ul.open { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; max-width: 75ch; }
+code { font-family: var(--f-mono); font-size: 0.92em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Prototype 1 · Assurance Resolution Agents</div>
+    <h1>Wholesale invoice dispute flow</h1>
+    <p class="lede">How one case moves from an invoice that is 8% above expectation to an analyst-approved decision. Every conclusion links back to a source record or a deterministic calculation, and the flow pauses to ask for evidence instead of guessing an amount.</p>
+  </header>
+
+  <section>
+    <div class="legend">
+      <span><span class="chip c-rules">rules</span> deterministic code, same input gives same output</span>
+      <span><span class="chip c-agent">agent</span> model reasoning, bounded by cited evidence</span>
+      <span><span class="chip c-analyst">analyst</span> human decision</span>
+      <span><span class="swatch-dash"></span> outside the customer’s systems, or a paused state</span>
+    </div>
+
+    <figure>
+      <div class="scroll">
+      <svg class="flow" viewBox="0 0 920 1230" role="img" aria-label="Flow from five source records through seven steps: open case, validate, reconcile, investigate causes, size exposure, recommend, and an analyst approval gate, ending in an approved case packet. Blocking data issues and evidence gaps pause the case in a request-evidence state that feeds back into validation. The analyst can return the case to the recommendation step. Every step writes to and cites a shared evidence ledger that becomes the audit record.">
+        <defs>
+          <marker id="a-fg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-fg"/></marker>
+          <marker id="a-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-muted"/></marker>
+          <marker id="a-analyst" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-analyst"/></marker>
+          <marker id="a-ledger" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-ledger"/></marker>
+        </defs>
+
+        <!-- Source records -->
+        <rect class="box-ext" x="42" y="30" width="156" height="70" rx="4"/>
+        <text class="t-title" x="120" y="60" text-anchor="middle">Carrier invoice</text>
+        <text class="t-sub" x="120" y="80" text-anchor="middle">external, from carrier</text>
+
+        <rect class="box" x="212" y="30" width="156" height="70" rx="4"/>
+        <text class="t-title" x="290" y="60" text-anchor="middle">Internal usage</text>
+        <text class="t-sub" x="290" y="80" text-anchor="middle">CDRs from mediation</text>
+
+        <rect class="box" x="382" y="30" width="156" height="70" rx="4"/>
+        <text class="t-title" x="460" y="60" text-anchor="middle">Rated charges</text>
+        <text class="t-sub" x="460" y="80" text-anchor="middle">internal rating output</text>
+
+        <rect class="box" x="552" y="30" width="156" height="70" rx="4"/>
+        <text class="t-title" x="630" y="60" text-anchor="middle">Carrier contract</text>
+        <text class="t-sub" x="630" y="80" text-anchor="middle">terms, dispute window</text>
+
+        <rect class="box" x="722" y="30" width="156" height="70" rx="4"/>
+        <text class="t-title" x="800" y="60" text-anchor="middle">Rate sheet</text>
+        <text class="t-sub" x="800" y="80" text-anchor="middle">effective-dated rates</text>
+
+        <!-- sources into step 1 -->
+        <line class="flowline" x1="120" y1="100" x2="300" y2="168" marker-end="url(#a-fg)"/>
+        <line class="flowline" x1="290" y1="100" x2="340" y2="168" marker-end="url(#a-fg)"/>
+        <line class="flowline" x1="460" y1="100" x2="380" y2="168" marker-end="url(#a-fg)"/>
+        <line class="flowline" x1="630" y1="100" x2="420" y2="168" marker-end="url(#a-fg)"/>
+        <line class="flowline" x1="800" y1="100" x2="460" y2="168" marker-end="url(#a-fg)"/>
+
+        <!-- Evidence ledger rail -->
+        <line class="cite" x1="85" y1="100" x2="85" y2="168" marker-end="url(#a-ledger)"/>
+        <text class="t-label" x="92" y="140">record IDs</text>
+        <rect class="rail" x="30" y="170" width="110" height="1020" rx="6"/>
+        <text class="t-rail" x="78" y="680" text-anchor="middle" transform="rotate(-90 78 680)">EVIDENCE LEDGER</text>
+        <text class="t-rail-sub" x="100" y="680" text-anchor="middle" transform="rotate(-90 100 680)">record IDs · calculation IDs · who and when</text>
+
+        <!-- Step 1 -->
+        <rect class="box" x="200" y="170" width="360" height="76" rx="4"/>
+        <text class="t-num" x="216" y="200">1</text><text class="t-title" x="232" y="200">Open case</text>
+        <text class="t-sub" x="232" y="222">Output: case record, +8% discrepancy</text>
+        <g class="badge b-rules"><rect x="484" y="180" width="64" height="20" rx="3"/><text x="516" y="194" text-anchor="middle">rules</text></g>
+        <line class="cite" x1="200" y1="208" x2="142" y2="208"/><circle class="dot" cx="140" cy="208" r="3"/>
+        <line class="flowline" x1="380" y1="246" x2="380" y2="288" marker-end="url(#a-fg)"/>
+
+        <!-- Step 2 -->
+        <rect class="box" x="200" y="290" width="360" height="76" rx="4"/>
+        <text class="t-num" x="216" y="320">2</text><text class="t-title" x="232" y="320">Validate data</text>
+        <text class="t-sub" x="232" y="342">Output: data-quality result</text>
+        <g class="badge b-rules"><rect x="484" y="300" width="64" height="20" rx="3"/><text x="516" y="314" text-anchor="middle">rules</text></g>
+        <line class="cite" x1="200" y1="328" x2="142" y2="328"/><circle class="dot" cx="140" cy="328" r="3"/>
+        <line class="flowline" x1="380" y1="366" x2="380" y2="408" marker-end="url(#a-fg)"/>
+        <text class="t-label" x="390" y="392">clean, or issues flagged</text>
+
+        <!-- Request evidence (paused state) -->
+        <path class="branch" d="M560,312 H850 V428" marker-end="url(#a-muted)"/>
+        <text class="t-label" x="705" y="304" text-anchor="middle">blocking data issue</text>
+        <path class="branch" d="M720,430 V350 H562" marker-end="url(#a-muted)"/>
+        <text class="t-label" x="640" y="343" text-anchor="middle">records received</text>
+        <rect class="box-ext" x="660" y="430" width="230" height="120" rx="4"/>
+        <text class="t-title" x="676" y="458">Request evidence</text>
+        <text class="t-sub" x="676" y="482">Case paused, deadline tracked</text>
+        <text class="t-sub" x="676" y="500">Names the exact missing records</text>
+        <text class="t-sub" x="676" y="518">Asks carrier or internal team</text>
+        <text class="t-sub" x="676" y="536">No amount is guessed meanwhile</text>
+
+        <!-- Step 3 -->
+        <rect class="box" x="200" y="410" width="360" height="76" rx="4"/>
+        <text class="t-num" x="216" y="440">3</text><text class="t-title" x="232" y="440">Reconcile</text>
+        <text class="t-sub" x="232" y="462">Output: reconciliation table</text>
+        <g class="badge b-rules"><rect x="484" y="420" width="64" height="20" rx="3"/><text x="516" y="434" text-anchor="middle">rules</text></g>
+        <line class="cite" x1="200" y1="448" x2="142" y2="448"/><circle class="dot" cx="140" cy="448" r="3"/>
+        <line class="flowline" x1="380" y1="486" x2="380" y2="528" marker-end="url(#a-fg)"/>
+
+        <!-- Step 4 -->
+        <rect class="box" x="200" y="530" width="360" height="76" rx="4"/>
+        <text class="t-num" x="216" y="560">4</text><text class="t-title" x="232" y="560">Investigate causes</text>
+        <text class="t-sub" x="232" y="582">Output: cause analysis, claims classed</text>
+        <g class="badge b-agent"><rect x="484" y="540" width="64" height="20" rx="3"/><text x="516" y="554" text-anchor="middle">agent</text></g>
+        <line class="cite" x1="200" y1="568" x2="142" y2="568"/><circle class="dot" cx="140" cy="568" r="3"/>
+        <line class="flowline" x1="380" y1="606" x2="380" y2="648" marker-end="url(#a-fg)"/>
+
+        <!-- Step 5 -->
+        <rect class="box" x="200" y="650" width="360" height="76" rx="4"/>
+        <text class="t-num" x="216" y="680">5</text><text class="t-title" x="232" y="680">Size financial exposure</text>
+        <text class="t-sub" x="232" y="702">Output: supported vs unresolved amount</text>
+        <g class="badge b-rules"><rect x="484" y="660" width="64" height="20" rx="3"/><text x="516" y="674" text-anchor="middle">rules</text></g>
+        <line class="cite" x1="200" y1="688" x2="142" y2="688"/><circle class="dot" cx="140" cy="688" r="3"/>
+        <line class="flowline" x1="380" y1="726" x2="380" y2="768" marker-end="url(#a-fg)"/>
+
+        <!-- Step 6 -->
+        <rect class="box" x="200" y="770" width="360" height="130" rx="4"/>
+        <text class="t-num" x="216" y="800">6</text><text class="t-title" x="232" y="800">Recommend</text>
+        <text class="t-sub" x="232" y="822">Output: proposed decision with reasons</text>
+        <g class="badge b-agent"><rect x="484" y="780" width="64" height="20" rx="3"/><text x="516" y="794" text-anchor="middle">agent</text></g>
+        <g class="opt"><rect x="212" y="838" width="72" height="26" rx="3"/><text x="248" y="855" text-anchor="middle">Approve</text></g>
+        <g class="opt"><rect x="289" y="838" width="72" height="26" rx="3"/><text x="325" y="855" text-anchor="middle">Partial</text></g>
+        <g class="opt"><rect x="366" y="838" width="82" height="26" rx="3"/><text x="407" y="855" text-anchor="middle">Full dispute</text></g>
+        <g class="opt opt-ev"><rect x="453" y="838" width="95" height="26" rx="3"/><text x="500" y="855" text-anchor="middle">Need evidence</text></g>
+        <line class="cite" x1="200" y1="808" x2="142" y2="808"/><circle class="dot" cx="140" cy="808" r="3"/>
+        <path class="branch" d="M548,851 H780 V552" marker-end="url(#a-muted)"/>
+        <text class="t-label" x="790" y="700">evidence</text>
+        <text class="t-label" x="790" y="716">requested</text>
+        <line class="flowline" x1="380" y1="900" x2="380" y2="958" marker-end="url(#a-fg)"/>
+        <text class="t-label" x="390" y="934">decision + citations</text>
+
+        <!-- Step 7: analyst gate -->
+        <rect class="box-gate" x="200" y="960" width="360" height="90" rx="4"/>
+        <text class="t-num" x="216" y="990">7</text><text class="t-title" x="232" y="990">Analyst approval gate</text>
+        <text class="t-sub" x="232" y="1012">Approve, edit amount, or return</text>
+        <text class="t-sub" x="232" y="1030">Nothing leaves without sign-off</text>
+        <g class="badge b-analyst"><rect x="476" y="970" width="72" height="20" rx="3"/><text x="512" y="984" text-anchor="middle">analyst</text></g>
+        <line class="cite" x1="200" y1="1005" x2="142" y2="1005"/><circle class="dot" cx="140" cy="1005" r="3"/>
+        <path class="loop-analyst" d="M560,1005 H620 V885 H562" marker-end="url(#a-analyst)"/>
+        <text class="t-label" x="630" y="950">returns with notes</text>
+        <line class="flowline" x1="380" y1="1050" x2="380" y2="1108" marker-end="url(#a-fg)"/>
+        <text class="t-label" x="390" y="1084">approves</text>
+
+        <!-- Output -->
+        <rect class="box-out" x="200" y="1110" width="360" height="80" rx="4"/>
+        <text class="t-title" x="216" y="1140">Approved case packet</text>
+        <text class="t-sub" x="216" y="1160">Dispute packet, or payment approval</text>
+        <text class="t-sub" x="216" y="1177">plus audit record built from the ledger</text>
+        <line class="cite" x1="142" y1="1150" x2="198" y2="1150" marker-end="url(#a-ledger)"/>
+        <line class="flowline" x1="560" y1="1150" x2="658" y2="1150" marker-end="url(#a-fg)"/>
+        <rect class="box-ext" x="660" y="1120" width="230" height="60" rx="4"/>
+        <text class="t-title" x="676" y="1146">Sent to carrier</text>
+        <text class="t-sub" x="676" y="1166">by the analyst, outside the system</text>
+      </svg>
+      </div>
+      <figcaption>Five source records open a case that runs down the seven steps. Two paths pause it: a blocking data issue at step 2, or a recommendation that more evidence is needed at step 6. Both land in a waiting state that feeds new records back into validation, so nothing downstream runs on unchecked data. The analyst can send the case back to step 6 with notes. Every step writes to and cites one evidence ledger, and the audit record is compiled from it.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Each step’s inputs, output and evidence</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Step</th><th>Reads</th><th>Produces</th><th>Cites in the ledger</th><th>Stops or branches when</th></tr></thead>
+        <tbody>
+          <tr><td class="step"><span class="n">1</span>Open case<br><span class="chip c-rules">rules</span></td>
+            <td>Invoice header and lines, internal usage, rated charges, contract, rate sheet</td>
+            <td>Case record: carrier, billing period, invoiced total, expected total, variance (+8%), dispute deadline</td>
+            <td>Invoice ID, usage extract ID, rating run ID, contract and rate-sheet version</td>
+            <td>Variance is inside the agreed tolerance, so no case opens</td></tr>
+          <tr><td class="step"><span class="n">2</span>Validate data<br><span class="chip c-rules">rules</span></td>
+            <td>All five sources as attached to the case</td>
+            <td>Data-quality result: each check passed, flagged, or blocking</td>
+            <td>The rows that failed each check (period, currency, unit, totals, required fields, duplicates, effective dates)</td>
+            <td>A blocking issue such as a missing rate sheet version or invoice totals that don’t sum. The case pauses and requests evidence</td></tr>
+          <tr><td class="step"><span class="n">3</span>Reconcile<br><span class="chip c-rules">rules</span></td>
+            <td>Validated invoice lines, usage, contracted rates by effective date</td>
+            <td>Reconciliation table grouped by destination, service, date, rate and exception type</td>
+            <td>Each mismatch row links to the invoice line, usage records and rate row it compared</td>
+            <td>Never branches. Unmatched records become an exception type, not an error</td></tr>
+          <tr><td class="step"><span class="n">4</span>Investigate causes<br><span class="chip c-agent">agent</span></td>
+            <td>Reconciliation table, contract terms, rate change history</td>
+            <td>Cause analysis with every statement classed as fact, calculation, interpretation or missing evidence</td>
+            <td>Each statement points to ledger entries. A statement without one is tagged missing evidence</td>
+            <td>Never branches on its own. Gaps it finds flow into step 5 as unresolved amount</td></tr>
+          <tr><td class="step"><span class="n">5</span>Size exposure<br><span class="chip c-rules">rules</span></td>
+            <td>Reconciliation table plus the classed cause analysis</td>
+            <td>Expected charge, invoiced charge, supported dispute amount, unresolved amount</td>
+            <td>Calculation IDs that tie each amount to the rows summed</td>
+            <td>Never branches. Only facts and calculations count toward the supported amount</td></tr>
+          <tr><td class="step"><span class="n">6</span>Recommend<br><span class="chip c-agent">agent</span></td>
+            <td>Exposure figures, cause analysis, contract dispute terms and deadline</td>
+            <td>Proposed decision with a short rationale that cites the ledger</td>
+            <td>The figures and statements the rationale relies on</td>
+            <td>Unresolved amount is material and the deadline allows. The case pauses and requests evidence</td></tr>
+          <tr><td class="step"><span class="n">7</span>Analyst gate<br><span class="chip c-analyst">analyst</span></td>
+            <td>Proposed decision, exposure, cause analysis, ledger</td>
+            <td>Signed decision, then the case packet and audit record</td>
+            <td>The analyst’s identity, time, any edits and the reason</td>
+            <td>Analyst returns the case with notes, and step 6 revises</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Which claims can support a dispute amount</h2>
+    <p>Step 4 sorts every statement into one of four classes. Step 5 only counts the first two toward the supported amount. The other two become the unresolved amount, which is what drives a request for evidence.</p>
+    <div class="classes">
+      <div class="cls"><span class="tag yes">counts toward supported</span><h3>Verified fact</h3><p>Read directly from a record. The invoice bills destination X at rate R from date D.</p></div>
+      <div class="cls"><span class="tag yes">counts toward supported</span><h3>Calculation</h3><p>A deterministic result over cited rows. Re-rating these minutes at the contracted rate gives amount A.</p></div>
+      <div class="cls"><span class="tag no">unresolved only</span><h3>Interpretation</h3><p>A likely explanation the records don’t prove. The carrier probably applied the new rate before its notice period ended.</p></div>
+      <div class="cls"><span class="tag no">unresolved only</span><h3>Missing evidence</h3><p>A record the case needs but doesn’t have. No rate notification on file for this destination change.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How step 6 picks a decision</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Decision</th><th>When</th></tr></thead>
+        <tbody>
+          <tr><td class="step">Approve invoice</td><td>Supported dispute amount is zero and the unresolved amount is below the materiality threshold.</td></tr>
+          <tr><td class="step">Partial dispute</td><td>Supported amount is above zero but covers only part of the variance, and the remainder is explained or immaterial.</td></tr>
+          <tr><td class="step">Full dispute</td><td>Supported amount covers the whole variance.</td></tr>
+          <tr><td class="step">Request evidence</td><td>Unresolved amount is material, or a blocking gap remains, and the contract’s dispute window still allows time. Close to the deadline, the agent instead recommends disputing the supported amount and reserving the rest.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>What changed from the original seven steps</h2>
+    <ol class="changes">
+      <li>Step 2 can stop the case. A blocking data issue pauses it instead of passing bad data into reconciliation.</li>
+      <li>Requesting evidence is a paused state, not an end point. New records go back through validation before anything downstream reruns.</li>
+      <li>Step 1 records the dispute deadline from the contract, so step 6 can weigh waiting for evidence against the window closing.</li>
+      <li>The evidence ledger is shared by all steps from the start. The audit record is compiled from it rather than written at the end.</li>
+      <li>The analyst can return a case with notes, and step 6 revises the recommendation.</li>
+      <li>Each step is marked as rules, agent or analyst. Amounts are only ever produced by rules steps.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Open questions for the next pass</h2>
+    <ul class="open">
+      <li>Decided: thresholds, adjustable later: open a case when the variance is above 2% of the invoiced total, and request evidence when the unresolved amount is above 1%. Both also respect the contract’s minimum dispute amount when one exists. The thresholds are settings, and each case records the values it used, so changing them later never rewrites past decisions.</li>
+      <li>Should “full dispute” stay as its own outcome, or is it a partial dispute that happens to cover everything?</li>
+      <li>Does the analyst send the packet to the carrier by hand, or should the prototype simulate that send too? The simulated systems thread can answer this once the record formats research is in.</li>
+    </ul>
+  </section>
+</div>
+</body>
+</html>

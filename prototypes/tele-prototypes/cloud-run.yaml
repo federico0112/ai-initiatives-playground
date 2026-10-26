@@ -1,0 +1,10 @@
+# Cloud Run deployment configuration
+# No secrets: the prototype runs on simulated data generated into the image at build time
+
+secrets: []
+env: []
+
+# A scenario run rolls up 1.35M simulated message records in memory
+resources:
+  memory: 2Gi
+  cpu: "1"
