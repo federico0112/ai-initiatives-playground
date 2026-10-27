@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Check an invoice{% endblock %}
+{% block body %}
+<header>
+  <a href="/">All scenarios</a>
+  <h1>Check a carrier invoice</h1>
+  <p class="muted">Upload the invoice a carrier sent you. It is read, priced against our own record of the
+  traffic we sent, and every line that disagrees is reported with the records behind it.</p>
+</header>
+
+{% if error %}<div class="card" style="border-color: var(--bad)"><b style="color: var(--bad)">Could not check that file.</b>
+<p class="muted" style="margin-bottom:0">{{ error }}</p></div>{% endif %}
+
+<div class="card">
+  <h2>1 · Upload the invoice</h2>
+  <form class="gate" method="post" enctype="multipart/form-data" action="/upload">
+    <label>Invoice file<input type="file" name="invoice" accept=".json,.xml,.csv" required></label>
+    <button type="submit">Check against our records</button>
+  </form>
+  <p class="muted" style="margin-bottom:0">Accepted: the carrier's <b>UBL 2.1 XML</b> e-invoice, a <b>CSV</b>
+  traffic summary, or the native <b>JSON</b> invoice record. Up to 16 MB.</p>
+</div>
+
+{% if files %}
+<div class="card">
+  <h2>Sample files</h2>
+  <p class="muted">Real-shaped files from the simulated carrier, if you need something to try. Download one,
+  then upload it above. Editing a rate or a volume before you upload it changes what the check finds.</p>
+  <table>
+    <tr><th>File</th><th>Format</th><th>What it carries</th></tr>
+    {% for f in files %}
+    <tr><td><a href="/demo-files/{{ f.name }}">{{ f.name }}</a></td><td>{{ f.label }}</td><td>{{ f.note }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% else %}
+<div class="card"><b>No sample files yet.</b> Build them with
+<code class="mono">python raw-examples/build_examples.py</code>, then reload. You can still upload your own.</div>
+{% endif %}
+
+<div class="card">
+  <h2>What it checks against</h2>
+  <p class="muted" style="margin-bottom:8px">The invoice is only half the picture. These are the records on
+  file for the <span class="mono">{{ reference }}</span> account that it is checked against:</p>
+  <table>
+    <tr><td><b>Agreement</b></td><td>The contract: billing unit, {{ term('rate') }} notice periods, payment terms,
+      dispute window, and the {{ term('clause') }}s a finding can rest on.</td></tr>
+    <tr><td><b>{{ term('Rate deck')|safe }}s</b></td><td>Every price per destination {{ term('network') }}, with the date
+      each takes effect and the notice that announced it.</td></tr>
+    <tr><td><b>Our usage</b></td><td>Every message we submitted, by day and network, plus the {{ term('reject')|safe }}s
+      our {{ term('mediation') }} could not process.</td></tr>
+    <tr><td><b>{{ term('Rating run')|safe }}</b></td><td>What our own systems priced that traffic at — the number the
+      invoice is compared with.</td></tr>
+  </table>
+</div>
+{% endblock %}

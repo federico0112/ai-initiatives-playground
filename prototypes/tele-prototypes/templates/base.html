@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Invoice Dispute Agents{% endblock %}</title>
+<style>
+:root {
+  --bg: #F5F7FA; --surface: #FFFFFF; --fg: #18202B; --muted: #5A6577; --line: #D3D9E2;
+  --rules: #2C68A8; --rules-soft: #E3EDF8; --agent: #8A5A00; --agent-soft: #F7ECD6;
+  --analyst: #7A3A9A; --analyst-soft: #F1E4F7; --ok: #23786A; --ok-soft: #DDF1EC;
+  --warn: #8A5A00; --warn-soft: #F7ECD6; --bad: #A33A3A; --bad-soft: #F8E1E1;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #10151C; --surface: #18202A; --fg: #E5E9EF; --muted: #9AA5B5; --line: #34414F;
+  --rules: #84B6EA; --rules-soft: #1C2D42; --agent: #E3B25A; --agent-soft: #3A2D14;
+  --analyst: #CC9DE8; --analyst-soft: #33213E; --ok: #6DC6B2; --ok-soft: #15322D;
+  --warn: #E3B25A; --warn-soft: #3A2D14; --bad: #F08A8A; --bad-soft: #3D1E1E; color-scheme: dark } }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, "Segoe UI", sans-serif; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 28px 16px 64px; display: flex; flex-direction: column; gap: 22px; }
+a { color: var(--rules); }
+h1 { font-size: 26px; margin: 0; } h2 { font-size: 18px; margin: 0 0 10px; } h3 { font-size: 15px; margin: 14px 0 6px; }
+.muted { color: var(--muted); } .mono { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; vertical-align: top; padding: 7px 9px; border-bottom: 1px solid var(--line); }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chip { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
+.rules { background: var(--rules-soft); color: var(--rules); } .agent { background: var(--agent-soft); color: var(--agent); }
+.analyst { background: var(--analyst-soft); color: var(--analyst); }
+.pass, .match, .resolved, .supported { background: var(--ok-soft); color: var(--ok); }
+.flag, .carrier_favour, .awaiting_evidence, .analyst_review, .approved_for_payment, .submitted { background: var(--warn-soft); color: var(--warn); }
+.block, .exception, .unresolved, .no_case { background: var(--bad-soft); color: var(--bad); }
+.figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.fig { border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
+.fig b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; }
+.fig span { font-size: 12px; color: var(--muted); }
+.unit { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 2px; }
+/* Terms carry a plain-language definition, shown by the script below in #tip. The tooltip lives on
+   <body> so the cards' overflow scrolling cannot clip it. */
+.term { border-bottom: 1px dotted var(--muted); cursor: help; }
+#tip {
+  position: fixed; z-index: 50; display: none; max-width: 280px; text-align: left;
+  background: var(--fg); color: var(--bg); font-size: 12px; line-height: 1.4; font-weight: 400;
+  padding: 7px 9px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,.25);
+}
+.plain { border-left: 3px solid var(--rules); padding-left: 14px; margin: 0; list-style: none; }
+.plain li { margin: 5px 0; } .plain b { font-variant-numeric: tabular-nums; }
+td.when { white-space: nowrap; } td.when b { display: block; font-weight: 600; }
+form.gate { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 10px; }
+form.gate label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 3px; }
+input, button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+button { cursor: pointer; background: var(--analyst); color: #fff; border-color: var(--analyst); }
+button.secondary { background: var(--surface); color: var(--analyst); }
+pre { white-space: pre-wrap; font-size: 12.5px; margin: 0; }
+/* Source document view: numbered lines, with the cited ones marked. */
+pre.src { white-space: pre; overflow-x: auto; font-family: ui-monospace, Menlo, monospace; line-height: 1.55; }
+pre.src .ln { display: block; }
+pre.src .ln i { display: inline-block; width: 42px; margin-right: 10px; text-align: right; font-style: normal;
+  color: var(--muted); user-select: none; border-right: 1px solid var(--line); padding-right: 7px; }
+pre.src .hit { background: var(--warn-soft); box-shadow: inset 3px 0 var(--warn); }
+pre.src .hit i { color: var(--warn); font-weight: 600; }
+/* A CSV shown as its columns, with the cited row marked. */
+table.src-table { font-size: 12.5px; }
+table.src-table td { white-space: nowrap; font-variant-numeric: tabular-nums; }
+table.src-table tr.hit > td { background: var(--warn-soft); font-weight: 600; }
+table.src-table tr.hit > td:first-child { box-shadow: inset 3px 0 var(--warn); color: var(--warn); }
+/* The columns a finding turns on: marked in the header, and called out in the cited row. */
+/* The whole header cell explains its column, so there is no dead zone around a wrapped label. */
+table.src-table th.term { border-bottom: 1px solid var(--line); cursor: help;
+  text-decoration: underline dotted; text-underline-offset: 3px; }
+table.src-table th.key { color: var(--rules); }
+table.src-table th.key::after { content: " ●"; font-size: 8px; vertical-align: middle; }
+table.src-table tr.hit > td.key { background: var(--warn); color: #fff; font-weight: 700; }
+b.keyname { color: var(--rules); font-weight: 600; }
+/* One finding from step 4, said plainly before it is said formally. */
+.cause { border-top: 1px solid var(--line); padding: 14px 0 2px; }
+.cause:first-of-type { border-top: 0; padding-top: 4px; }
+.cause h3 { margin: 0 0 6px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.cause .said { margin: 0; max-width: 78ch; }
+.sum { margin: 0 0 4px; font-size: 17px; }
+/* A calculation broken into steps, so a difference reads as a difference. */
+ol.steps { margin: 0; padding-left: 22px; }
+ol.steps li { margin: 0 0 10px; }
+ol.steps .expr { display: block; font-size: 16px; }
+ol.steps .why { display: block; color: var(--muted); font-size: 13.5px; max-width: 72ch; margin-top: 2px; }
+.sum b { font-variant-numeric: tabular-nums; }
+/* An identifier that opens the record behind it. */
+a.cite { color: inherit; text-decoration: none; border-bottom: 1px solid var(--rules); }
+a.cite:hover { color: var(--rules); }
+td.cites a { display: block; }
+ol.timeline { margin: 0; padding-left: 20px; } ol.timeline li { margin: 2px 0; }
+details summary { cursor: pointer; font-weight: 600; }
+</style>
+</head>
+<body><div class="wrap">{% block body %}{% endblock %}</div>
+<div id="tip" role="tooltip"></div>
+<script>
+// Shows a term's definition next to it, flipping above when there is no room below.
+const tip = document.getElementById("tip");
+for (const ev of ["pointerover", "focusin"]) document.addEventListener(ev, e => {
+  const t = e.target.closest && e.target.closest(".term");
+  if (!t) { if (!tip.contains(e.target)) tip.style.display = "none"; return; }
+  tip.textContent = t.dataset.tip;
+  tip.style.display = "block";
+  const r = t.getBoundingClientRect(), h = tip.offsetHeight;
+  tip.style.left = Math.max(8, Math.min(r.left, innerWidth - tip.offsetWidth - 8)) + "px";
+  tip.style.top = (r.bottom + 6 + h < innerHeight ? r.bottom + 6 : r.top - h - 6) + "px";
+});
+for (const ev of ["pointerout", "focusout"]) document.addEventListener(ev, e => {
+  if (e.target.closest && e.target.closest(".term")) tip.style.display = "none";
+});
+</script></body>
+</html>

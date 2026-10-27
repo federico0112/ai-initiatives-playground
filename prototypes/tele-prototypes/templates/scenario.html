@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Case {{ r.scenario }}{% endblock %}
+{% block body %}
+{% set cur = r.invoice.currency if r.invoice else '' %}
+{% set f = r.passes[-1].figures if r.passes else None %}
+<header>
+  <a href="/">All scenarios</a>
+  <h1>Scenario <span class="mono">{{ r.scenario }}</span>{% if r.case %} · {{ r.case.case_id }}{% endif %}
+    <span class="chip {{ r.status }}">{{ r.status|replace('_', ' ') }}</span></h1>
+  <p class="muted">{{ note }} · sim clock {{ r.sim_start }} to {{ r.sim_end }}</p>
+</header>
+
+{% if r.invoice %}
+<div class="card">
+  <h2>What this case is about</h2>
+  <ul class="plain">
+    <li>{{ r.invoice.carrier }} billed us <b>{{ r.screening.invoiced|money }} {{ cur }}</b> for {{ term('A2P SMS', 'a2p sms') }}
+      we sent {{ r.invoice.period_start }} to {{ r.invoice.period_end }}.</li>
+    <li>Our own {{ term('rating run') }} priced the same traffic at <b>{{ r.screening.expected|money }} {{ cur }}</b> —
+      a {{ term('gap', 'variance') }} of <b>{{ r.screening.variance|money }} {{ cur }}</b>, {{ r.screening.variance_pct }}% of the bill
+      (we open a case above {{ r.screening.threshold }}%, the {{ term('case threshold') }}).</li>
+    {% if f %}
+    <li>{% if f.unresolved|float %}Of that gap{% else %}Every cent of that gap is accounted for{% endif %}:
+      <b>{{ f.supported|money }}</b> is a {{ term('billing error we can prove', 'supported') }} and we claim it back ·
+      <b>{{ f.explained_carrier_favour|money }}</b> is {{ term('our own records falling short', "carrier's favour") }} so we pay it{% if f.unresolved|float %} ·
+      <b>{{ f.unresolved|money }}</b> is {{ term('still unexplained', 'unresolved') }}, and needs evidence before it can be claimed{% endif %}.</li>
+    {% endif %}
+    {% if f and r.case %}
+    <li>We pay the {{ term('undisputed part', 'undisputed payable') }}, <b>{{ f.undisputed_payable|money }} {{ cur }}</b>, by {{ r.case.payment_due }},
+      and must file the dispute before the {{ term('dispute deadline') }} of {{ r.case.dispute_deadline }}.</li>
+    {% endif %}
+  </ul>
+</div>
+{% endif %}
+
+{% set stepinfo = {'1': ('rules', 'Open case'), '2': ('rules', 'Validate'), '3': ('rules', 'Reconcile'),
+                   '4': ('agent', 'Investigate'), '5': ('rules', 'Size exposure'), '6': ('agent', 'Recommend'),
+                   '7': ('analyst', 'Approve')} %}
+<div class="card">
+  <h2>Timeline</h2>
+  <table>
+    <tr><th>When (UTC)</th><th>Step</th><th>What happened</th></tr>
+    {% for t in r.timeline %}
+      {% set parts = t.text.split(': ', 1) %}
+      {% set si = stepinfo.get(parts[0][5:]) if parts|length == 2 and parts[0].startswith('Step ') else None %}
+      <tr>
+        <td class="when mono"><b>{{ t.at.split('T')[0] }}</b><span class="muted">{{ t.at.split('T')[1][:5] }}</span></td>
+        <td>{% if si %}<span class="chip {{ si[0] }}">{{ parts[0] }} · {{ si[1] }}</span>{% endif %}</td>
+        <td>{{ parts[1] if si else t.text }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% if r.case and r.case.related_objects %}
+<div class="card">
+  <h2>Source documents</h2>
+  <p class="muted">The records this case was decided against. Open one to see the document with the
+  relevant lines highlighted.</p>
+  <table>
+    <tr><th>Role</th><th>Document</th></tr>
+    {% for o in r.case.related_objects %}
+    <tr><td>{{ o.role|replace('_', ' ')|title }}</td>
+      <td>{% if o.role == 'agreement' and r.invoice.agreement_ref %}{{ cite_link(o.cite_id, r.invoice.agreement_ref) }}
+          <span class="muted mono">{{ o.cite_id.rsplit('/', 1)[1] }}</span>
+        {% else %}{{ cite_link(o.cite_id, o.cite_id.rsplit('/', 1)[1]) }}{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% include "_steps.html" %}
+
+{% if r.case and (r.status in ('analyst_review', 'resolved', 'submitted', 'approved_for_payment')) %}
+<div class="card">
+  <h2>7 · Analyst approval <span class="chip analyst">analyst</span></h2>
+  {% for d in decisions %}<p class="muted">Earlier: {{ d.action }}{% if d.amount %} {{ d.amount|money }}{% endif %} by {{ d.analyst }}{% if d.reason %}: {{ d.reason }}{% endif %}</p>{% endfor %}
+  {% if r.status == 'analyst_review' %}
+    {% set rec = r.passes[-1].recommendation %}
+    <p>Nothing leaves without sign-off. Approve the recommendation, lower the amount, or return the case to step 6 with notes.</p>
+    <form class="gate" method="post" action="/scenario/{{ r.scenario }}/decide">
+      <input type="hidden" name="decisions" value="{{ decisions_json }}">
+      <label>Analyst<input name="analyst" value="analyst" required></label>
+      <label>Reason or notes<input name="reason" size="34"></label>
+      {% if rec.amount %}<label>Amount in {{ cur }} (max {{ rec.amount|money }})<input name="amount" type="number" step="0.01" min="0" max="{{ rec.amount }}" value="{{ rec.amount }}"></label>{% endif %}
+      <button name="action" value="approve">Approve {{ rec.decision|replace('_', ' ') }}</button>
+      {% if rec.amount %}<button class="secondary" name="action" value="edit">Approve edited amount</button>{% endif %}
+      <button class="secondary" name="action" value="return">Return with notes</button>
+    </form>
+  {% else %}
+    {% set a = r.case.analyst_decision %}
+    <p>Approved <b>{{ a.decision|replace('_', ' ') }}</b>{% if a.approved_amount %} of {{ a.approved_amount|money }} {{ cur }}{% endif %} by {{ a.analyst }} at {{ a.decided_at }}.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if r.submissions %}
+<div class="card">
+  <h2>Carrier dispute portal</h2>
+  <p class="muted">The claim as filed with the carrier, and what came back.</p>
+  <table><tr><th>Claim</th><th>{{ term('Reason code') }}</th><th>Product</th><th>Period</th>
+    <th class="num">Billed {{ term('rate') }}</th><th class="num">Correct {{ term('rate') }}</th><th class="num">Amount ({{ cur }})</th></tr>
+  {% for s in r.submissions %}<tr><td class="mono">{{ s.claim_id }}</td><td class="mono">{{ s.reason_code }}</td><td>{{ s.product }}</td>
+    <td class="mono">{{ s.from_date }} to {{ s.through_date }}</td><td class="num">{{ s.billed_rate }}</td><td class="num">{{ s.correct_rate or 'not billable' }}</td>
+    <td class="num">{{ s.disputed_amount|money }}</td></tr>{% endfor %}</table>
+  <h3>Responses</h3>
+  <table><tr><th>When</th><th>Claim</th><th>Status</th><th>Outcome</th><th class="num">Credit ({{ cur }})</th></tr>
+  {% for x in r.responses %}<tr><td class="mono">{{ x.responded_at }}</td><td class="mono">{{ x.claim_id }}</td><td>{{ x.status }}</td>
+    <td>{{ x.outcome or '' }}</td><td class="num">{{ x.credit_amount|money }}</td></tr>{% endfor %}</table>
+</div>
+{% endif %}
+
+{% if r.packet %}
+<div class="card"><details><summary>Case packet (as attached to the case)</summary><pre>{{ r.packet }}</pre></details></div>
+{% endif %}
+
+{% if r.ledger %}
+<div class="card"><details><summary>{{ term('Evidence ledger') }} · {{ r.ledger|length }} entries</summary>
+<table><tr><th>Entry</th><th>Step</th><th>Actor</th><th>Kind</th><th>Text</th><th>Cites</th></tr>
+{% for e in r.ledger %}<tr><td class="mono">{{ e.entry_id }}</td><td>{{ e.step }}</td><td><span class="chip {{ e.actor.kind }}">{{ e.actor.kind }}</span> <span class="mono muted">{{ e.actor.name }}</span></td>
+<td>{{ e.kind }}{% if e.claim_class %} · {{ e.claim_class }}{% endif %}{% if e.calc %} · <span class="mono">{{ e.calc.calc_id }}</span>{% endif %}</td><td>{{ e.text }}</td>
+<td class="mono cites">{% for c in e.cites[:3] %}{{ cite_link(c) }}{% endfor %}{% if e.cites|length > 3 %}<span class="muted">+{{ e.cites|length - 3 }} more</span>{% endif %}</td></tr>{% endfor %}
+</table></details></div>
+{% endif %}
+{% endblock %}
