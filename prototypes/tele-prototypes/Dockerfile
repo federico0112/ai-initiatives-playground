@@ -13,6 +13,9 @@ COPY . .
 # The simulated data is not committed; generate it into the image (deterministic, about a minute)
 RUN python dataset/generate_dataset.py > /dev/null && python dataset/verify_dataset.py > /dev/null
 
+# The sample carrier files the upload page offers, built from that data
+RUN cd raw-examples && python build_examples.py > /dev/null
+
 # Inject git SHA into version.py at build time
 RUN sed -i "s/__git_sha__ = \"development\"/__git_sha__ = \"${GIT_SHA}\"/" version.py
 

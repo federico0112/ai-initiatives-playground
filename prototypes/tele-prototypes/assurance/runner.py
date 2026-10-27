@@ -5,6 +5,7 @@ approved claims to the S7 stub and plays its scripted responses.
 A run is a pure function of (scenario, analyst decisions): the web app replays a scenario with the
 decisions taken so far instead of keeping server-side state.
 """
+import json
 import os
 import re
 import shutil
@@ -93,6 +94,11 @@ def run_scenario(scenario_id, decisions=None, dataset_dir=DATASET, workspace=Non
     sc = steps.screen_invoice(ctx, invoice_id)
     out["screening"] = {k: str(sc[k]) for k in ("invoiced", "expected", "variance", "variance_pct", "threshold")}
     out["screening"]["cites"] = [sc["invoice"]["cite_id"], sc["run"]["cite_id"]]
+    out["invoice"] = {"invoice_id": invoice_id, "currency": sc["invoice"]["currency"],
+                      "carrier": sc["invoice"]["seller_party"]["name"],
+                      "buyer": sc["invoice"]["buyer_party"]["name"],
+                      "period_start": sc["invoice"]["period_start"], "period_end": sc["invoice"]["period_end"],
+                      "agreement_ref": sc["invoice"]["agreement_ref"]}
     if not sc["opens"]:
         out["status"] = "no_case"
         log(f"Variance {sc['variance_pct']}% of invoiced is within the {sc['threshold']}% tolerance; no case opened")
@@ -159,6 +165,94 @@ def run_scenario(scenario_id, decisions=None, dataset_dir=DATASET, workspace=Non
         rec = steps.recommend(ctx, p["figures"], ids, causes, notes=note)
         out["passes"][-1]["recommendation"] = dict(rec)
     _approve(ctx, out, d, rec, causes, scn, log)
+    return _finish(out, ctx)
+
+
+def run_invoice(invoice, dataset_dir=DATASET, reference="base", received_at=None, workspace=None):
+    """Checks one uploaded invoice against the reference data and reports what it finds.
+
+    The invoice is written into the run workspace, which the data root reads before the reference
+    folder, so steps 1-6 run against it exactly as they do for a seeded scenario. There is no
+    scripted carrier here: the run stops at the analyst gate, or earlier if it needs evidence.
+    """
+    inv_id = invoice.get("invoice_id") or "UPLOAD"
+    ws = workspace or tempfile.mkdtemp(prefix="assurance-upload-")
+    ref_dir = os.path.join(dataset_dir, "sim-data", reference)
+    root = DataRoot(ref_dir, ws)
+    with open(root.write_path(f"invoices/inbox/{inv_id}/invoice.json"), "w") as f:
+        json.dump(invoice, f, indent=1)
+    clock = Clock(_dt(received_at) if received_at else datetime.now(timezone.utc).replace(microsecond=0))
+    with open(root.write_path(f"invoices/inbox/{inv_id}/envelope.json"), "w") as f:
+        json.dump({"message_id": f"<upload-{inv_id}>", "from": "upload", "to": "assurance",
+                   "received_at": clock.iso(), "subject": f"Uploaded invoice {inv_id}",
+                   "attachments": ["invoice.json"]}, f, indent=1)
+
+    systems = Systems(root)
+    ctx = steps.CaseContext(systems, clock, dict(DEFAULT_THRESHOLDS))
+    timeline = []
+    out = {"scenario": inv_id, "uploaded": True, "reference": reference, "sim_start": clock.iso(),
+           "thresholds": ctx.thresholds, "timeline": timeline, "passes": [], "submissions": [],
+           "responses": [], "packet": None, "workspace": ws}
+
+    def log(text):
+        timeline.append({"at": clock.iso(), "text": text})
+
+    log(f"Invoice {inv_id} uploaded and read into the inbox")
+    sc = steps.screen_invoice(ctx, inv_id)
+    out["screening"] = {k: str(sc[k]) for k in ("invoiced", "expected", "variance", "variance_pct", "threshold")}
+    out["screening"]["cites"] = [sc["invoice"]["cite_id"], sc["run"]["cite_id"]] if sc["run"] else [sc["invoice"]["cite_id"]]
+    out["invoice"] = {"invoice_id": inv_id, "currency": sc["invoice"]["currency"],
+                      "carrier": sc["invoice"]["seller_party"]["name"],
+                      "buyer": sc["invoice"]["buyer_party"]["name"],
+                      "period_start": sc["invoice"]["period_start"], "period_end": sc["invoice"]["period_end"],
+                      "agreement_ref": sc["invoice"]["agreement_ref"]}
+    if not sc["opens"]:
+        out["status"] = "no_case"
+        log(f"Variance {sc['variance_pct']}% of invoiced is within the {sc['threshold']}% tolerance; no case opened")
+        return _finish(out, ctx)
+    steps.open_case(ctx, sc)
+    log(f"Step 1: case {ctx.case['case_id']} opened, variance {money(sc['variance'])} ({sc['variance_pct']}% of invoiced)")
+
+    p = {"at": clock.iso()}
+    v = ctx.validation = steps.validate(ctx)
+    p["validation"] = v
+    if v["blocking"]:
+        blocked = [c["check"] for c in v["checks"] if c["status"] == "block"]
+        log(f"Step 2: blocking data issue ({', '.join(blocked)})")
+        p["recommendation"] = {"decision": "request_evidence", "evidence_items": v["requests"], "source": "step2",
+                               "rationale": "Step 2 found a blocking data issue: " + "; ".join(
+                                   f"{c['check']}: {c['text']}" for c in v["checks"] if c["status"] == "block"),
+                               "created_at": clock.iso()}
+        ctx.case["recommendation"] = p["recommendation"]
+        out["passes"].append(p)
+        out["status"] = "awaiting_evidence"
+        return _finish(out, ctx)
+
+    log("Step 2: data validated" + (" (non-blocking flags: " + ", ".join(
+        c["check"] for c in v["checks"] if c["status"] == "flag") + ")"))
+    p["reconciliation"] = recon = steps.reconcile(ctx)
+    log("Step 3: " + ", ".join(f"line {r['line_no']} {r['status']}" for r in recon if r["line_no"]))
+    ctx.detail_findings = {}
+    p["causes"] = causes = steps.investigate(ctx, recon)
+    if ctx.detail_findings:
+        p["detail_findings"] = ctx.detail_findings
+    log("Step 4: " + (", ".join(f"{c['group']} {c['classification']}" for c in causes) or "no causes"))
+    p["figures"], ids = steps.size_exposure(ctx, causes)
+    log(f"Step 5: supported {money(p['figures']['supported'])}, explained {money(p['figures']['explained_carrier_favour'])}, "
+        f"unresolved {money(p['figures']['unresolved'])}")
+    rec = steps.recommend(ctx, p["figures"], ids, causes)
+    log(f"Step 6: recommend {rec['decision']}" + (f" {money(rec['amount'])}" if rec.get("amount") else ""))
+    p["recommendation"] = dict(rec)
+    out["passes"].append(p)
+
+    if rec["decision"] == "request_evidence":
+        ctx.set_status("pending", "awaiting_evidence", "evidence requested")
+        out["status"] = "awaiting_evidence"
+        log("Evidence is needed before the claim can be sized; the case waits for it")
+        return _finish(out, ctx)
+    ctx.set_status("pending", "analyst_review", "waiting for analyst sign-off")
+    out["status"] = "analyst_review"
+    log("Step 7: waiting for the analyst")
     return _finish(out, ctx)
 
 

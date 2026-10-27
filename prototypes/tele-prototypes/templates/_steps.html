@@ -1,0 +1,96 @@
+{# Steps 1-6 of the case, shared by the scenario replay and the uploaded-invoice review.
+   Expects `r` (the run result) and `cur` (currency code) in the context. #}
+{% macro fig(label, value, unit) %}<div class="fig"><b>{{ value if unit == '%' else value|money }}<span class="unit">{{ unit }}</span></b><span>{{ label }}</span></div>{% endmacro %}
+<div class="card">
+  <h2>1 · Open case <span class="chip rules">rules</span></h2>
+  <p class="muted">Compare the carrier's bill with our own number, and open a case if the gap is big enough to work.</p>
+  <div class="figs">
+    {{ fig(term('Invoiced'), r.screening.invoiced, cur) }}{{ fig(term('Expected'), r.screening.expected, cur) }}
+    {{ fig(term('Variance'), r.screening.variance, cur) }}{{ fig('Variance of invoiced', r.screening.variance_pct, '%') }}
+    {{ fig(term('Case threshold'), r.screening.threshold, '%') }}
+  </div>
+  {% if r.case %}<p class="muted">Dispute deadline {{ r.case.dispute_deadline }} · payment due {{ r.case.payment_due }} ·
+  severity {{ r.case.severity }} · correlation <span class="mono">{{ r.case.correlation_id }}</span></p>{% endif %}
+</div>
+
+{% for p in r.passes %}
+<div class="card">
+  <h2>2 · Validate data <span class="chip rules">rules</span>{% if r.passes|length > 1 %} <span class="muted">pass {{ loop.index }}, {{ p.at }}</span>{% endif %}</h2>
+  <p class="muted">Before comparing anything, check both sides' records are complete and add up. A flag is a warning, not a blocker.</p>
+  <table>{% for c in p.validation.checks %}
+    <tr><td><span class="chip {{ c.status }}">{{ c.status }}</span></td><td>{{ c.check }}</td><td>{{ c.text }}</td></tr>{% endfor %}
+  </table>
+</div>
+
+{% if p.reconciliation %}
+<div class="card">
+  <h2>3 · Reconcile <span class="chip rules">rules</span></h2>
+  <p class="muted">Line by line: did the carrier bill the volume we actually sent, at the {{ term('rate') }} our contract says applies?</p>
+  <table>
+    <tr><th>Line</th><th>{{ term('Network') }}</th><th>Period</th><th class="num">Billed {{ term('segments', 'segment') }}</th>
+      <th class="num">Our {{ term('segments', 'segment') }}</th><th class="num">{{ term('Rate') }} ({{ cur }}/seg)</th>
+      <th class="num">{{ term('Invoiced') }} ({{ cur }})</th><th class="num">{{ term('Expected') }} ({{ cur }})</th>
+      <th class="num">{{ term('Variance') }} ({{ cur }})</th><th>Result</th></tr>
+    {% for row in p.reconciliation %}
+    <tr><td>{{ cite_link(row.line_cite, row.line_no) if row.line_no else '' }}</td><td>{{ row.destination or row.network_group }} <span class="muted mono">{{ row.network_group }}</span></td>
+      <td class="mono">{{ row.period|join(' to ') if row.period else '' }}</td><td class="num">{{ row.billed_segments|qty }}</td>
+      <td class="num">{{ row.our_segments|qty }}</td><td class="num">{{ row.billed_rate or '' }}</td>
+      <td class="num">{{ row.invoiced|money }}</td><td class="num">{{ row.expected|money }}</td><td class="num">{{ row.variance|money }}</td>
+      <td><span class="chip {{ row.status }}">{{ row.status }}</span> {% for e in row.exceptions %}<span class="mono">{{ e.type }}</span> {% endfor %}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h2>4 · Investigate causes <span class="chip agent">agent</span></h2>
+  <p class="muted">For each line that did not match, find why — and whether the records make it the carrier's error or ours.</p>
+  {% for c in p.causes %}
+  {% set row = (p.reconciliation | selectattr('line_no', 'equalto', c.line_no) | list | first) if p.reconciliation else None %}
+  {% set v = cause_verdict(c) %}
+  {% set plain = explain_cause(c) %}
+  <div class="cause">
+    <h3>{% if c.line_no %}Invoice line {{ c.line_no }} · {% endif %}{{ (row.destination if row else none) or c.group }}
+      <span class="chip {{ c.classification }}">{{ v[0] }}</span></h3>
+    {% if plain %}<p class="said">{{ plain }}</p>{% endif %}
+    <p class="muted" style="margin:6px 0 0">{{ v[1] }}
+      {% if c.amount %}<span class="muted"> · worked out in {{ cite_link(c.amount, c.amount.rsplit('/', 1)[1]) }}</span>{% endif %}</p>
+    {% if c.internal_actions %}<p class="muted" style="margin:6px 0 0">To fix on our side:
+      {{ c.internal_actions|join('; ') }}</p>{% endif %}
+    <details style="margin-top:8px"><summary class="muted">The finding as recorded, with its citations</summary>
+      <p style="margin:8px 0 0">{{ link_clauses(c.statement, agreement_id_of(r)) }}</p>
+      <p class="muted mono" style="font-size:12px;margin:6px 0 0">{{ c.exception }}{% if c.claim_class %} ·
+        {{ c.claim_class|join(', ') }}{% endif %}</p>
+    </details>
+  </div>
+  {% endfor %}
+  {% if p.detail_findings %}<h3>Carrier message detail matched on supplier_msg_id</h3>
+  <p class="muted">The carrier's own per-message list, matched to ours one message at a time.</p>
+  <table><tr><th>Line</th><th class="num">Rows</th><th class="num">Matched to ours</th>
+    <th class="num">On our {{ term('bind', 'smpp bind') }}, missing from usage</th><th class="num">Duplicate IDs</th><th class="num">Unexplained</th></tr>
+  {% for line, d in p.detail_findings.items() %}<tr><td>{{ line }}</td><td class="num">{{ d.rows }}</td>
+    <td class="num">{{ d.matched.billable_segments }} seg.</td><td class="num">{{ d.own_bind.billable_segments }} seg. {{ d.own_bind.binds|join(', ') }}</td>
+    <td class="num">{{ d.duplicates.billable_segments }} seg.</td><td class="num">{{ d.unexplained.billable_segments }} seg.</td></tr>{% endfor %}
+  </table>{% endif %}
+</div>
+
+<div class="card">
+  <h2>5 · Size exposure <span class="chip rules">rules</span></h2>
+  <p class="muted">Split the gap into what we claim back, what we accept, and what is still unexplained.</p>
+  <div class="figs">
+    {{ fig(term('Supported dispute', 'supported'), p.figures.supported, cur) }}
+    {{ fig(term("Explained, carrier's favour", "carrier's favour"), p.figures.explained_carrier_favour, cur) }}
+    {{ fig(term('Unresolved'), p.figures.unresolved, cur) }}{{ fig('Unresolved of invoiced', p.figures.unresolved_pct_of_invoice, '%') }}
+    {{ fig(term('Undisputed payable'), p.figures.undisputed_payable, cur) }}
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>6 · Recommend <span class="chip agent">agent</span></h2>
+  <p><b>{{ p.recommendation.decision|replace('_', ' ') }}</b>{% if p.recommendation.amount %} · {{ p.recommendation.amount|money }} {{ cur }}{% endif %}</p>
+  <p>{{ link_clauses(p.recommendation.rationale, agreement_id_of(r)) }}</p>
+  {% if p.recommendation.evidence_items %}<p>Evidence requested:</p><ul>{% for i in p.recommendation.evidence_items %}
+    <li>{{ i.item }} from {{ i.to }}{% if i.network_group %} ({{ i.network_group }}, {{ i.period }}){% endif %}</li>{% endfor %}</ul>{% endif %}
+  {% if p.recommendation.internal_actions %}<p>Internal actions:</p><ul>{% for a in p.recommendation.internal_actions %}<li>{{ a }}</li>{% endfor %}</ul>{% endif %}
+</div>
+{% endfor %}

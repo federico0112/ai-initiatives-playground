@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ label }}{% endblock %}
+{% block body %}
+<header>
+  <a href="javascript:history.back()">← Back to the case</a>
+  <h1>{{ label }}</h1>
+  <p class="muted">{{ note }}</p>
+  <p class="mono muted" style="font-size:12px">{{ cite }}</p>
+  {% for rel in related or [] %}<p style="margin:6px 0 0"><a href="{{ rel.href }}">{{ rel.text }} →</a></p>{% endfor %}
+</header>
+
+{% if record is none %}
+<div class="card" style="border-color: var(--bad)">
+  <b style="color: var(--bad)">Nothing on file for that citation.</b>
+  <p class="muted" style="margin-bottom:0">
+  {% if cite.startswith('sim://ledger/calc/') %}
+    A calculation belongs to the case that produced it, not to the reference records, so this link
+    only works from the page that showed it. Re-open the case and follow the link from there.
+  {% else %}
+    The citation did not match any record in the data on file.
+  {% endif %}</p>
+</div>
+{% else %}
+
+{% if view %}
+<div class="card">
+  <h2>In the source document</h2>
+  <p class="muted">{{ view.path }}{% if view.truncated %} · lines {{ view.lines[0].n }}–{{ view.lines[-1].n }}
+    of {{ view.total }}{% else %} · {{ view.total }} lines{% endif %}{% if view.hits %} ·
+    <b>highlighted: {{ view.hits|length }} line{{ '' if view.hits|length == 1 else 's' }}</b>{% endif %}</p>
+  {% if view.table %}
+  {% if view.table.key_names %}
+  <p class="muted" style="margin:-4px 0 10px">The finding turns on
+    {% for n in view.table.key_names %}<b class="keyname">{{ n }}</b>{% if not loop.last %}, {% endif %}{% endfor %};
+    those columns are marked below.</p>
+  {% endif %}
+  <table class="src-table">
+    <tr><th class="num">#</th>{% for h in view.table.header %}{% set tip = view.table.help[loop.index0] %}
+      <th class="{{ 'key ' if loop.index0 in view.table.key }}{{ 'term' if tip }}"
+        {% if tip %}tabindex="0" data-tip="{{ tip }}"{% endif %}>{{ h|replace('_', ' ') }}</th>{% endfor %}</tr>
+    {% for row in view.table.rows %}
+    <tr{{ ' class=hit'|safe if row.hit }}><td class="num muted mono">{{ row.n }}</td>
+      {% for c in row.cells %}<td{{ ' class=key'|safe if loop.index0 in view.table.key }}>{%
+        if row.links and loop.index0 in row.links %}{{ cite_link(row.links[loop.index0], c) }}{%
+        else %}{{ c if c else ('—' if loop.index0 in view.table.key else '') }}{% endif %}</td>{% endfor %}</tr>
+    {% endfor %}
+  </table>
+  <details style="margin-top:12px"><summary class="muted">As written in the file</summary>
+  <pre class="src">{% for l in view.lines %}<span class="ln{{ ' hit' if l.hit }}"><i>{{ l.n }}</i>{{ l.text }}</span>
+{% endfor %}</pre></details>
+  {% else %}
+  <pre class="src">{% for l in view.lines %}<span class="ln{{ ' hit' if l.hit }}"><i>{{ l.n }}</i>{{ l.text }}</span>
+{% endfor %}</pre>
+  {% endif %}
+</div>
+{% else %}
+{% if record.formula is not defined %}<div class="card"><p class="muted" style="margin:0">No source file on disk for this record.</p></div>{% endif %}
+{% endif %}
+
+{% if record.formula is defined %}
+<div class="card">
+  <h2>How this figure was worked out</h2>
+  {% set steps = formula_steps(record.formula, record.result, record.unit) %}
+  {% if steps %}
+  <ol class="steps">
+    {% for expr, why in steps %}
+    <li><span class="mono expr">{{ expr }}</span><span class="why">{{ why }}</span></li>
+    {% endfor %}
+  </ol>
+  <p class="muted" style="margin:10px 0 0">Written as one line in the ledger:
+    <span class="mono">{{ record.formula }}</span></p>
+  {% else %}
+  <p class="sum"><span class="mono">{{ record.formula }}</span></p>
+  <p class="sum">= <b>{{ record.result|money }} {{ record.unit }}</b></p>
+  {% endif %}
+  <p class="muted" style="max-width:78ch">{{ record.text }}</p>
+  {% if record.inputs %}
+  <h3>Built from</h3>
+  <table>
+    {% for name, src in record.inputs.items() %}
+    <tr><td style="width:170px"><b>{{ name|replace('_', ' ') }}</b></td>
+      <td class="cites">{% set items = src if src is sequence and src is not string else [src] %}
+        {% for c in items[:4] %}{{ cite_link(c, short_cite(c)) }}{% endfor %}
+        {% if items|length > 4 %}<span class="muted">and {{ items|length - 4 }} more of the same kind</span>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>The record</h2>
+  <table>
+    {% for k, v in record.items() %}
+    <tr><td style="width:180px"><b>{{ k|replace('_', ' ') }}</b></td>
+      <td>{% if v is mapping %}<span class="mono">{{ v|tojson }}</span>
+          {% elif v is string or v is number %}{{ v }}
+          {% elif v %}<span class="mono">{{ v|tojson }}</span>
+          {% else %}<span class="muted">—</span>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+<script>
+// Land on the cited lines, but only when they are below the fold.
+const hit = document.querySelector("pre.src .hit");
+if (hit && hit.getBoundingClientRect().bottom > innerHeight) hit.scrollIntoView({block: "center"});
+</script>
+{% endif %}
+{% endblock %}

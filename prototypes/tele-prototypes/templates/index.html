@@ -2,11 +2,24 @@
 {% block body %}
 <header>
   <div class="muted mono">Prototype 1 · Assurance Resolution Agents</div>
-  <h1>Wholesale A2P SMS invoice disputes</h1>
-  <p class="muted">Each scenario replays one carrier invoice through the seven-step flow: open case, validate data,
-  reconcile, investigate causes, size exposure, recommend, analyst approval. Amounts come only from deterministic
-  calculations in the evidence ledger, and every statement cites the records it rests on.
-  <span class="chip rules">rules</span> <span class="chip agent">agent</span> <span class="chip analyst">analyst</span></p>
+  <h1>Wholesale {{ term('A2P SMS', 'a2p sms') }} invoice disputes</h1>
+  <p class="muted">We pay carriers to deliver our customers' text messages. Each month a carrier sends an invoice;
+  this flow checks it against our own record of what we sent, and builds the claim where the two disagree.
+  Seven steps: open case, validate data, reconcile, investigate causes, size exposure, recommend, analyst approval.
+  Amounts come only from deterministic calculations in the {{ term('evidence ledger') }}, and every statement cites
+  the records it rests on. <span class="chip rules">rules</span> <span class="chip agent">agent</span>
+  <span class="chip analyst">analyst</span></p>
+  <p class="muted">Terms with a dotted underline explain themselves on hover.</p>
+</header>
+
+<div class="card">
+  <h2>Check an invoice</h2>
+  <p class="muted" style="margin-bottom:10px">Upload a carrier invoice and have it checked against the contract,
+  the rate decks and our own record of the traffic we sent.</p>
+  <p style="margin:0"><a href="/upload"><b>Upload an invoice →</b></a></p>
+</div>
+
+<header>
 </header>
 {% if not scenarios %}
 <div class="card"><b>No simulated data yet.</b> Generate it with <code>python dataset/generate_dataset.py</code>
